@@ -1,24 +1,25 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace TurtleML.Layers
 {
     public class DropOutLayer : ILayer
     {
-        private static readonly ThreadLocal<Random> random = new ThreadLocal<Random>(() => new Random());
+        //private static readonly ThreadLocal<Random> random = new ThreadLocal<Random>(() => new Random());
         private readonly float dropOut;
+
         private readonly ILayer inputLayer;
+        private readonly Random random;
         private Tensor outputs;
 
-        private DropOutLayer(float dropOut, ILayer inputLayer)
+        private DropOutLayer(float dropOut, Random random, ILayer inputLayer)
         {
             if (dropOut < float.Epsilon)
                 throw new ArgumentOutOfRangeException(nameof(dropOut), "drop out must be greater than zero.");
 
             this.dropOut = dropOut;
+            this.random = random;
             this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
             var inputs = inputLayer.Outputs;
@@ -38,7 +39,8 @@ namespace TurtleML.Layers
 
             if (training)
             {
-                Parallel.For(0, outputs.Length, h => outputs[h] = random.Value.NextDouble() >= dropOut ? inputs[h] : 0f);
+                for (int h = 0, count = outputs.Length; h < count; h++)
+                    outputs[h] = random.NextDouble() >= dropOut ? inputs[h] : 0f;
 
                 return outputs;
             }
@@ -57,15 +59,23 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private float dropOut;
+            private Random random;
 
             public ILayer Build(ILayer inputLayer)
             {
-                return new DropOutLayer(dropOut, inputLayer);
+                return new DropOutLayer(dropOut, random, inputLayer);
             }
 
             public Builder DropOut(float dropOut)
             {
                 this.dropOut = dropOut;
+
+                return this;
+            }
+
+            public Builder Seed(Random random)
+            {
+                this.random = random;
 
                 return this;
             }
