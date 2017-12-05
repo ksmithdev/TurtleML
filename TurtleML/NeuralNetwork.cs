@@ -1,16 +1,31 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using TurtleML.Loss;
 
 namespace TurtleML
 {
     public class NeuralNetwork
     {
         private readonly ILayer[] layers;
+        private readonly ILossFunction loss;
+        private readonly Random random;
         private readonly bool shuffle;
 
-        private NeuralNetwork(bool shuffle, ILayer[] layers)
+        private NeuralNetwork(bool shuffle, Random random, ILossFunction loss, ILayerBuilder[] layers)
         {
             this.shuffle = shuffle;
-            this.layers = layers;
+            this.random = random;
+            this.loss = loss;
+            this.layers = new ILayer[layers.Length];
+
+            ILayer inputLayer = null;
+            for (int l = 0; l < layers.Length; l++)
+            {
+                inputLayer = layers[l].Build(inputLayer);
+                inputLayer.Initialize(random);
+
+                this.layers[l] = inputLayer;
+            }
         }
 
         public Tensor CalculateOutputs(Tensor inputs)
@@ -49,7 +64,7 @@ namespace TurtleML
 
         public float Test(TrainingSet trainingSet)
         {
-            float sumErrorCost = 0f;
+            float sumCost = 0f;
             for (int i = 0, count = trainingSet.Count; i < count; i++)
             {
                 var inputs = trainingSet[i].Item1;
@@ -59,14 +74,12 @@ namespace TurtleML
                 Tensor errors = new Tensor(actuals.Length);
 
                 for (int o = 0; o < actuals.Length; o++)
-                {
                     errors[o] = expected[o] - actuals[o];
 
-                    sumErrorCost += 0.5f * errors[o] * errors[o];
-                }
+                sumCost += loss.CalculateCost(actuals, expected);
             }
 
-            return sumErrorCost / trainingSet.Count;
+            return sumCost / trainingSet.Count;
         }
 
         public float Train(TrainingSet trainingSet, float learningRate)
@@ -74,7 +87,7 @@ namespace TurtleML
             if (shuffle)
                 trainingSet.Shuffle();
 
-            float sumErrorCost = 0f;
+            float sumCost = 0f;
             for (int i = 0, count = trainingSet.Count; i < count; i++)
             {
                 var inputs = trainingSet[i].Item1;
@@ -84,16 +97,14 @@ namespace TurtleML
                 Tensor errors = new Tensor(actuals.Length);
 
                 for (int o = 0; o < actuals.Length; o++)
-                {
                     errors[o] = expected[o] - actuals[o];
 
-                    sumErrorCost += 0.5f * errors[o] * errors[o];
-                }
+                sumCost += loss.CalculateCost(actuals, expected);
 
                 BackPropagate(errors, learningRate);
             }
 
-            return sumErrorCost / trainingSet.Count;
+            return sumCost / trainingSet.Count;
         }
 
         private void BackPropagate(Tensor errors, float learningRate)
@@ -113,21 +124,33 @@ namespace TurtleML
 
         public class Builder
         {
-            private ILayer[] layers;
+            private ILayerBuilder[] layers;
+            private ILossFunction loss = new MeanSquaredError();
+            private Random random;
             private bool shuffle = false;
 
             public NeuralNetwork Build()
             {
-                return new NeuralNetwork(shuffle, layers);
+                return new NeuralNetwork(shuffle, random, loss, layers);
             }
 
             public Builder Layers(params ILayerBuilder[] layers)
             {
-                this.layers = new ILayer[layers.Length];
+                this.layers = layers;
 
-                ILayer inputLayer = null;
-                for (int l = 0; l < layers.Length; l++)
-                    inputLayer = this.layers[l] = layers[l].Build(inputLayer);
+                return this;
+            }
+
+            public Builder Loss(ILossFunction loss)
+            {
+                this.loss = loss;
+
+                return this;
+            }
+
+            public Builder Seed(Random random)
+            {
+                this.random = random;
 
                 return this;
             }

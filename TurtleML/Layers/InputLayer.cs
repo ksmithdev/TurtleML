@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace TurtleML.Layers
 {
@@ -23,6 +24,10 @@ namespace TurtleML.Layers
         }
 
         public void Dump(BinaryWriter writer)
+        {
+        }
+
+        public void Initialize(Random random)
         {
         }
 

@@ -23,6 +23,8 @@ namespace TurtleML.Layers
         {
             if (outputSize < 1)
                 throw new ArgumentOutOfRangeException(nameof(outputSize), "output size must be greater than zero");
+            if (momentumRate < float.Epsilon)
+                throw new ArgumentOutOfRangeException(nameof(momentumRate), "momentum rate must be greater than zero");
 
             this.outputSize = outputSize;
             this.momentumRate = momentumRate;
@@ -94,6 +96,18 @@ namespace TurtleML.Layers
             }
         }
 
+        public void Initialize(Random random)
+        {
+            var rnd = random ?? new Random();
+            var limit = 1f / inputSize;
+            for (int o = 0; o < outputSize; o++)
+            {
+                for (int w = 0; w < inputSize; w++)
+                    weights[o][w] = (float)rnd.NextDouble() * (limit + limit) - limit;
+                bias[o] = (float)rnd.NextDouble() * (limit + limit) - limit;
+            }
+        }
+
         public void Restore(BinaryReader reader)
         {
             int count = reader.ReadInt32();
@@ -113,7 +127,6 @@ namespace TurtleML.Layers
             private IActivationFunction activation;
             private float momentumRate = 0.9f;
             private int outputCount;
-            private Random random;
 
             public Builder Activation(IActivationFunction activation)
             {
@@ -124,26 +137,7 @@ namespace TurtleML.Layers
 
             public ILayer Build(ILayer inputLayer)
             {
-                if (outputCount < 1)
-                    throw new InvalidOperationException("output size must be greater than zero");
-                if (activation == null)
-                    throw new InvalidOperationException("activation cannot be null");
-
-                var layer = new FullyConnectedLayer(outputCount, momentumRate, activation, inputLayer ?? throw new ArgumentNullException(nameof(inputLayer)));
-
-                var inputs = inputLayer.Outputs;
-                var inputSize = inputs.Length;
-
-                var rnd = random ?? new Random();
-                var limit = 1f / inputSize;
-                for (int o = 0; o < outputCount; o++)
-                {
-                    for (int w = 0; w < inputSize; w++)
-                        layer.weights[o][w] = (float)rnd.NextDouble() * (limit + limit) - limit;
-                    layer.bias[o] = (float)rnd.NextDouble() * (limit + limit) - limit;
-                }
-
-                return layer;
+                return new FullyConnectedLayer(outputCount, momentumRate, activation, inputLayer);
             }
 
             public Builder MomentumRate(float momentumRate)
@@ -159,13 +153,6 @@ namespace TurtleML.Layers
                     throw new ArgumentOutOfRangeException("output size must be greater than zero", nameof(outputCount));
 
                 this.outputCount = outputCount;
-
-                return this;
-            }
-
-            public Builder Seed(Random random)
-            {
-                this.random = random;
 
                 return this;
             }

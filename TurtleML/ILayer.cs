@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace TurtleML
 {
@@ -11,6 +12,8 @@ namespace TurtleML
         Tensor CalculateOutputs(Tensor inputs, bool training = false);
 
         void Dump(BinaryWriter writer);
+
+        void Initialize(Random random);
 
         void Restore(BinaryReader reader);
     }

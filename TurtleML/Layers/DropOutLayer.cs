@@ -6,20 +6,17 @@ namespace TurtleML.Layers
 {
     public class DropOutLayer : ILayer
     {
-        //private static readonly ThreadLocal<Random> random = new ThreadLocal<Random>(() => new Random());
         private readonly float dropOut;
-
         private readonly ILayer inputLayer;
-        private readonly Random random;
         private Tensor outputs;
+        private Random random;
 
-        private DropOutLayer(float dropOut, Random random, ILayer inputLayer)
+        private DropOutLayer(float dropOut, ILayer inputLayer)
         {
-            if (dropOut < float.Epsilon)
-                throw new ArgumentOutOfRangeException(nameof(dropOut), "drop out must be greater than zero.");
+            if (dropOut < float.Epsilon || dropOut > 1f)
+                throw new ArgumentOutOfRangeException(nameof(dropOut), "drop out must be between zero and one.");
 
             this.dropOut = dropOut;
-            this.random = random;
             this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
             var inputs = inputLayer.Outputs;
@@ -52,6 +49,11 @@ namespace TurtleML.Layers
         {
         }
 
+        public void Initialize(Random random)
+        {
+            this.random = random ?? new Random();
+        }
+
         public void Restore(BinaryReader reader)
         {
         }
@@ -59,23 +61,15 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private float dropOut;
-            private Random random;
 
             public ILayer Build(ILayer inputLayer)
             {
-                return new DropOutLayer(dropOut, random, inputLayer);
+                return new DropOutLayer(dropOut, inputLayer);
             }
 
             public Builder DropOut(float dropOut)
             {
                 this.dropOut = dropOut;
-
-                return this;
-            }
-
-            public Builder Seed(Random random)
-            {
-                this.random = random;
 
                 return this;
             }

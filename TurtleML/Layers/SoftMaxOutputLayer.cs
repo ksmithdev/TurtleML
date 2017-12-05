@@ -10,7 +10,7 @@ namespace TurtleML.Layers
 
         private SoftMaxOutputLayer(ILayer inputLayer)
         {
-            this.inputLayer = inputLayer;
+            this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
             var inputs = inputLayer.Outputs;
             var inputSize = inputs.Length;
@@ -56,6 +56,10 @@ namespace TurtleML.Layers
         {
         }
 
+        public void Initialize(Random random)
+        {
+        }
+
         public void Restore(BinaryReader reader)
         {
         }
@@ -64,9 +68,6 @@ namespace TurtleML.Layers
         {
             public ILayer Build(ILayer inputLayer)
             {
-                if (inputLayer == null)
-                    throw new ArgumentNullException(nameof(inputLayer));
-
                 return new SoftMaxOutputLayer(inputLayer);
             }
         }

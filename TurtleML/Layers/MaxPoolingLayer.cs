@@ -77,6 +77,10 @@ namespace TurtleML.Layers
         {
         }
 
+        public void Initialize(Random random)
+        {
+        }
+
         public void Restore(BinaryReader reader)
         {
         }

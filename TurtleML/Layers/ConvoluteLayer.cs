@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace TurtleML.Layers
 {
@@ -130,6 +129,18 @@ namespace TurtleML.Layers
             }
         }
 
+        public void Initialize(Random random)
+        {
+            var rnd = random ?? new Random();
+            var limit = 1f / (filterWidth * filterHeight);
+            for (int f = 0, features = filterDepth; f < features; f++)
+            {
+                for (int w = 0; w < weights[f].Length; w++)
+                    weights[f][w] = (float)rnd.NextDouble() * (limit + limit) - limit;
+                bias[f] = (float)rnd.NextDouble() * (limit + limit) - limit;
+            }
+        }
+
         public void Restore(BinaryReader reader)
         {
             int count = reader.ReadInt32();
@@ -157,8 +168,7 @@ namespace TurtleML.Layers
             private int filterHeight;
             private int filterStride;
             private int filterWidth;
-            private float momentumRate = 0.5f;
-            private Random random;
+            private float momentumRate = 0.9f;
 
             public Builder Activation(IActivationFunction activation)
             {
@@ -174,18 +184,7 @@ namespace TurtleML.Layers
                 if (activation == null)
                     throw new InvalidOperationException("activation cannot be null");
 
-                var layer = new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, momentumRate, activation, inputLayer);
-
-                var rnd = random ?? new Random();
-                var limit = 1f / (filterWidth * filterHeight);
-                for (int f = 0, features = filterCount; f < features; f++)
-                {
-                    for (int w = 0; w < layer.weights[f].Length; w++)
-                        layer.weights[f][w] = (float)rnd.NextDouble() * (limit + limit) - limit;
-                    layer.bias[f] = (float)rnd.NextDouble() * (limit + limit) - limit;
-                }
-
-                return layer;
+                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, momentumRate, activation, inputLayer);
             }
 
             public Builder Filters(int width, int height, int stride, int count)
@@ -201,13 +200,6 @@ namespace TurtleML.Layers
             public Builder MomentumRate(float momentumRate)
             {
                 this.momentumRate = momentumRate;
-
-                return this;
-            }
-
-            public Builder Seed(Random random)
-            {
-                this.random = random;
 
                 return this;
             }
