@@ -36,7 +36,7 @@ namespace TurtleML.Layers
 
         public Tensor Outputs => outputs;
 
-        public void Backpropagate(Tensor errors, float learningRate)
+        public Tensor Backpropagate(Tensor errors, float learningRate)
         {
             signals.Clear();
 
@@ -49,7 +49,7 @@ namespace TurtleML.Layers
                         signals[sX, sY, sZ] = errors[x, y, z];
                     }
 
-            inputLayer.Backpropagate(signals, learningRate);
+            return signals;
         }
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)

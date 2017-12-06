@@ -100,8 +100,8 @@ namespace TurtleML
         public static Tensor Create(float[] array)
         {
             var tensor = new Tensor(array.Length);
-
-            return tensor.Load(array);
+            tensor.Load(array);
+            return tensor;
         }
 
         public static float Dot(Tensor tensor1, Tensor tensor2) => Dot(tensor1.values, tensor2.values);
@@ -202,6 +202,13 @@ namespace TurtleML
             Array.Clear(values, 0, values.Length);
         }
 
+        public void CopyTo(Tensor tensor, int offset) => CopyTo(tensor.values, offset);
+
+        public void CopyTo(float[] array, int offset)
+        {
+            Buffer.BlockCopy(array, 0, values, offset * sizeof(float), array.Length * sizeof(float));
+        }
+
         public float Dot(float[] array) => Dot(values, array);
 
         public float Dot(Tensor tensor) => Dot(values, tensor.values);
@@ -228,18 +235,18 @@ namespace TurtleML
             return x + (y * width) + (z * width * height);
         }
 
-        public Tensor Load(Tensor inputs)
-        {
-            Buffer.BlockCopy(inputs.values, 0, values, 0, values.Length * sizeof(float));
+        public void Load(Tensor source, int sourceOffset) => Load(source.values, sourceOffset);
 
-            return this;
+        public void Load(float[] source, int sourceOffset)
+        {
+            Buffer.BlockCopy(source, sourceOffset, values, 0, values.Length * sizeof(float));
         }
 
-        public Tensor Load(float[] array)
-        {
-            Buffer.BlockCopy(array, 0, values, 0, values.Length * sizeof(float));
+        public void Load(Tensor source) => Load(source.values);
 
-            return this;
+        public void Load(float[] source)
+        {
+            Buffer.BlockCopy(source, 0, values, 0, values.Length * sizeof(float));
         }
 
         public Tensor Multiply(float value)

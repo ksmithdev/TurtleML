@@ -107,11 +107,12 @@ namespace TurtleML
             return sumCost / trainingSet.Count;
         }
 
-        private void BackPropagate(Tensor errors, float learningRate)
+        private Tensor BackPropagate(Tensor errors, float learningRate)
         {
-            ILayer outputLayer = layers[layers.Length - 1];
-
-            outputLayer.Backpropagate(errors, learningRate);
+            Tensor signals = errors;
+            for (int l = layers.Length - 1; l > -1; l--)
+                signals = layers[l].Backpropagate(signals, learningRate);
+            return signals;
         }
 
         private Tensor CalculateTrainingOutputs(Tensor inputs)

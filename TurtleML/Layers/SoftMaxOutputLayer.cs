@@ -24,7 +24,7 @@ namespace TurtleML.Layers
 
         public int OutputSize => outputs.Length;
 
-        public void Backpropagate(Tensor errors, float learningRate)
+        public Tensor Backpropagate(Tensor errors, float learningRate)
         {
             Tensor signals = new Tensor(outputs.Length);
 
@@ -37,7 +37,7 @@ namespace TurtleML.Layers
                 signals[o] = error * derivative;
             }
 
-            inputLayer.Backpropagate(signals, learningRate);
+            return signals;
         }
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)

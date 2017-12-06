@@ -14,6 +14,11 @@ namespace TurtleML
         {
         }
 
+        public void Add(Tensor inputs, Tensor outputs)
+        {
+            Add(Tuple.Create(inputs, outputs));
+        }
+
         public void Shuffle()
         {
             var random = new Random();

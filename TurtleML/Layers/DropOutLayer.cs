@@ -25,9 +25,9 @@ namespace TurtleML.Layers
 
         public Tensor Outputs => outputs;
 
-        public void Backpropagate(Tensor errors, float learningRate)
+        public Tensor Backpropagate(Tensor errors, float learningRate)
         {
-            inputLayer.Backpropagate(errors, learningRate);
+            return errors;
         }
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
