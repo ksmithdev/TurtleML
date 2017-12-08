@@ -63,14 +63,14 @@ namespace TurtleML
 
         public float this[int x, int y]
         {
-            get { return values[x + y * width]; }
-            set { values[x + y * width] = value; }
+            get { return this[IndexOf(x, y)]; }
+            set { this[IndexOf(x, y)] = value; }
         }
 
         public float this[int x, int y, int z]
         {
-            get { return values[x + (y * width) + (z * width * height)]; }
-            set { values[x + (y * width) + (z * width * height)] = value; }
+            get { return this[IndexOf(x, y, z)]; }
+            set { this[IndexOf(x, y, z)] = value; }
         }
 
         public static Tensor Add(Tensor tensor1, Tensor tensor2) => Add(tensor1, tensor2.values);
@@ -88,7 +88,7 @@ namespace TurtleML
                 var vector1 = new Vector<float>(tensor.values, i);
                 var vector2 = new Vector<float>(array, i);
 
-                Vector.Add(vector1, vector2).CopyTo(result.values);
+                Vector.Add(vector1, vector2).CopyTo(result.values, i);
             }
 
             for (; i < count; i++)
@@ -149,6 +149,23 @@ namespace TurtleML
             return result;
         }
 
+        public static void Multiply(Tensor tensor, float value, Tensor result)
+        {
+            int i = 0,
+                step = Vector<float>.Count,
+                count = tensor.Length;
+
+            for (; i < count - step; i += step)
+            {
+                var vector = new Vector<float>(tensor.values, i);
+
+                Vector.Multiply(vector, value).CopyTo(result.values, i);
+            }
+
+            for (; i < count; i++)
+                result[i] = tensor.values[i] * value;
+        }
+
         public static float[] Multiply(float[] array, float value)
         {
             var result = new float[array.Length];
@@ -166,6 +183,30 @@ namespace TurtleML
 
             for (; i < count; i++)
                 result[i] = array[i] * value;
+
+            return result;
+        }
+
+        public static Tensor Multiply(Tensor tensor1, Tensor tensor2) => Multiply(tensor1, tensor2.values);
+
+        public static Tensor Multiply(Tensor tensor, float[] array)
+        {
+            var result = new Tensor(tensor.Dimensions);
+
+            int i = 0,
+                step = Vector<float>.Count,
+                count = tensor.Length;
+
+            for (; i < count - step; i += step)
+            {
+                var vector1 = new Vector<float>(tensor.values, i);
+                var vector2 = new Vector<float>(array, i);
+
+                Vector.Multiply(vector1, vector2).CopyTo(result.values, i);
+            }
+
+            for (; i < count; i++)
+                result[i] = tensor.values[i] * array[i];
 
             return result;
         }
@@ -206,7 +247,7 @@ namespace TurtleML
 
         public void CopyTo(float[] array, int offset)
         {
-            Buffer.BlockCopy(array, 0, values, offset * sizeof(float), array.Length * sizeof(float));
+            Buffer.BlockCopy(values, 0, array, offset * sizeof(float), values.Length * sizeof(float));
         }
 
         public float Dot(float[] array) => Dot(values, array);
@@ -223,13 +264,11 @@ namespace TurtleML
             return values.GetEnumerator();
         }
 
-        [Obsolete]
         public int IndexOf(int x, int y)
         {
             return x + y * width;
         }
 
-        [Obsolete]
         public int IndexOf(int x, int y, int z)
         {
             return x + (y * width) + (z * width * height);
@@ -264,6 +303,28 @@ namespace TurtleML
 
             for (; i < count; i++)
                 values[i] *= value;
+
+            return this;
+        }
+
+        public Tensor Multiply(Tensor tensor) => Multiply(tensor.values);
+
+        public Tensor Multiply(float[] array)
+        {
+            int i = 0,
+                step = Vector<float>.Count,
+                count = array.Length;
+
+            for (; i < count - step; i += step)
+            {
+                var vector1 = new Vector<float>(values, i);
+                var vector2 = new Vector<float>(array, i);
+
+                Vector.Multiply(vector1, vector2).CopyTo(values, i);
+            }
+
+            for (; i < count; i++)
+                values[i] *= array[i];
 
             return this;
         }

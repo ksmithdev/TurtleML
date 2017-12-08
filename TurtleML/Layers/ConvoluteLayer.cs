@@ -36,9 +36,6 @@ namespace TurtleML.Layers
             this.inputLayer = inputLayer;
 
             var inputs = inputLayer.Outputs;
-            //if (inputs.Dimensions.Length < 3)
-            //    throw new ArgumentException("input layer needs to output a 3 dimentional tensor", nameof(inputLayer));
-
             int inputWidth = inputs.Width;
             int inputHeight = inputs.Height;
             inputDepth = inputs.Depth;
@@ -65,24 +62,39 @@ namespace TurtleML.Layers
 
             signals.Clear();
 
-            var buffer = buffers.Value ?? (buffers.Value = new Tensor(filterWidth * filterHeight * inputDepth));
+            var buffer = buffers.Value ?? (buffers.Value = new Tensor(filterWidth, filterHeight, inputDepth));
+
+            var derivatives = new Tensor(outputs.Dimensions);
+            for (int d = 0, count = outputs.Length; d < count; d++)
+                derivatives[d] = activation.Derivative(outputs[d]);
+
+            var gradients = derivatives.Multiply(errors);
+
+            // TODO: some way to speed up signal calculations? this is the slowest part of the whole system right now
+            //for (int f = 0; f < signals.Depth; f++)
+            //    for (int y = 0; y < signals.Height; y++)
+            //        for (int x = 0; x < signals.Width; x++)
+            //        {
+            //        }
 
             for (int f = 0; f < errors.Depth; f++)
                 for (int y = 0; y < errors.Height; y++)
                     for (int x = 0; x < errors.Width; x++)
                     {
-                        float error = errors[x, y, f];
-                        float derivative = activation.Derivative(outputs[x, y, f]);
-                        float gradient = error * derivative;
+                        float gradient = gradients[x, y, f];
+
+                        Tensor.Multiply(weights[f], gradient, buffer);
 
                         for (int fz = 0; fz < inputDepth; fz++)
                             for (int fy = 0; fy < filterHeight; fy++)
                                 for (int fx = 0; fx < filterWidth; fx++)
                                 {
-                                    int filterIndex = IndexOf(fx, fy, fz);
+                                    int bufferIndex = buffer.IndexOf(fx, fy, fz);
+                                    int inputIndex = inputs.IndexOf(x + fx, y + fy, fz);
 
-                                    buffer[filterIndex] = inputs[x + fx, y + fy, fz];
-                                    signals[x + fx, y + fy, fz] += gradient * weights[f][filterIndex];
+                                    signals[inputIndex] += buffer[bufferIndex];
+
+                                    buffer[bufferIndex] = inputs[inputIndex];
                                 }
 
                         float delta = gradient * learningRate;
@@ -100,7 +112,7 @@ namespace TurtleML.Layers
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            var buffer = buffers.Value ?? (buffers.Value = new Tensor(filterWidth * filterHeight * inputDepth));
+            var buffer = buffers.Value ?? (buffers.Value = new Tensor(filterWidth, filterHeight, inputDepth));
 
             for (int x = 0; x < featureWidth; x++)
                 for (int y = 0; y < featureHeight; y++)
@@ -108,7 +120,12 @@ namespace TurtleML.Layers
                     for (int fz = 0; fz < inputDepth; fz++)
                         for (int fy = 0; fy < filterHeight; fy++)
                             for (int fx = 0; fx < filterWidth; fx++)
-                                buffer[IndexOf(fx, fy, fz)] = inputs[x + fx, y + fy, fz];
+                            {
+                                int inputIndex = inputs.IndexOf(x + fx, y + fy, fz);
+                                int bufferIndex = buffer.IndexOf(fx, fy, fz);
+
+                                buffer[bufferIndex] = inputs[inputIndex];
+                            }
 
                     for (int f = 0; f < filterDepth; f++)
                         outputs[x, y, f] = activation.Activate(Tensor.Dot(buffer, weights[f]) + bias[f]);
@@ -154,11 +171,6 @@ namespace TurtleML.Layers
 
                 bias[f] = reader.ReadSingle();
             }
-        }
-
-        private int IndexOf(int x, int y, int z)
-        {
-            return x + (y * filterWidth) + (z * filterWidth * filterHeight);
         }
 
         public class Builder : ILayerBuilder

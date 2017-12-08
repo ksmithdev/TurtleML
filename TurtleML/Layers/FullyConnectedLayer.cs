@@ -51,11 +51,15 @@ namespace TurtleML.Layers
 
             signals.Clear();
 
+            var derivatives = new Tensor(outputs.Dimensions);
+            for (int d = 0, count = outputs.Length; d < count; d++)
+                derivatives[d] = activation.Derivative(outputs[d]);
+
+            var gradients = derivatives.Multiply(errors);
+
             for (int o = 0; o < errors.Length; o++)
             {
-                float error = errors[o];
-                float derivative = activation.Derivative(outputs[o]);
-                float gradient = error * derivative;
+                float gradient = gradients[o];
 
                 signals.Add(Tensor.Multiply(weights[o], gradient));
 
