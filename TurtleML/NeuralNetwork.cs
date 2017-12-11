@@ -35,6 +35,8 @@ namespace TurtleML
 
         public event EventHandler<TrainingProgressEventArgs> TrainingProgress;
 
+        public ILayer[] Layers => layers;
+
         public Tensor CalculateOutputs(Tensor inputs)
         {
             Tensor results = inputs;
