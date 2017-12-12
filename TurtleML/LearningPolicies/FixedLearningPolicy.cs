@@ -1,10 +1,10 @@
 ﻿namespace TurtleML.LearningPolicies
 {
-    public class FixedPolicy : ILearningPolicy
+    public class FixedLearningPolicy : ILearningPolicy
     {
         private readonly float learningRate;
 
-        public FixedPolicy(float learningRate)
+        public FixedLearningPolicy(float learningRate)
         {
             this.learningRate = learningRate;
         }

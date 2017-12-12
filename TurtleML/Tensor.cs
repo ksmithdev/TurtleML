@@ -131,21 +131,7 @@ namespace TurtleML
         public static Tensor Multiply(Tensor tensor, float value)
         {
             var result = new Tensor(tensor.Dimensions);
-
-            int i = 0,
-                step = Vector<float>.Count,
-                count = tensor.Length;
-
-            for (; i < count - step; i += step)
-            {
-                var vector = new Vector<float>(tensor.values, i);
-
-                Vector.Multiply(vector, value).CopyTo(result.values, i);
-            }
-
-            for (; i < count; i++)
-                result[i] = tensor.values[i] * value;
-
+            Multiply(tensor, value, result);
             return result;
         }
 
@@ -166,33 +152,8 @@ namespace TurtleML
                 result[i] = tensor.values[i] * value;
         }
 
-        public static float[] Multiply(float[] array, float value)
+        public static void Multiply(Tensor tensor, float[] array, Tensor result)
         {
-            var result = new float[array.Length];
-
-            int i = 0,
-                step = Vector<float>.Count,
-                count = array.Length;
-
-            for (; i < count - step; i += step)
-            {
-                var vector = new Vector<float>(array, i);
-
-                Vector.Multiply(vector, value).CopyTo(result, i);
-            }
-
-            for (; i < count; i++)
-                result[i] = array[i] * value;
-
-            return result;
-        }
-
-        public static Tensor Multiply(Tensor tensor1, Tensor tensor2) => Multiply(tensor1, tensor2.values);
-
-        public static Tensor Multiply(Tensor tensor, float[] array)
-        {
-            var result = new Tensor(tensor.Dimensions);
-
             int i = 0,
                 step = Vector<float>.Count,
                 count = tensor.Length;
@@ -207,7 +168,14 @@ namespace TurtleML
 
             for (; i < count; i++)
                 result[i] = tensor.values[i] * array[i];
+        }
 
+        public static Tensor Multiply(Tensor tensor1, Tensor tensor2) => Multiply(tensor1, tensor2.values);
+
+        public static Tensor Multiply(Tensor tensor, float[] array)
+        {
+            var result = new Tensor(tensor.Dimensions);
+            Multiply(tensor, array, result);
             return result;
         }
 
@@ -290,19 +258,7 @@ namespace TurtleML
 
         public Tensor Multiply(float value)
         {
-            int i = 0,
-                step = Vector<float>.Count,
-                count = values.Length;
-
-            for (; i < count - step; i += step)
-            {
-                var vector = new Vector<float>(values, i);
-
-                Vector.Multiply(vector, value).CopyTo(values, i);
-            }
-
-            for (; i < count; i++)
-                values[i] *= value;
+            Multiply(this, value, this);
 
             return this;
         }
@@ -311,20 +267,7 @@ namespace TurtleML
 
         public Tensor Multiply(float[] array)
         {
-            int i = 0,
-                step = Vector<float>.Count,
-                count = array.Length;
-
-            for (; i < count - step; i += step)
-            {
-                var vector1 = new Vector<float>(values, i);
-                var vector2 = new Vector<float>(array, i);
-
-                Vector.Multiply(vector1, vector2).CopyTo(values, i);
-            }
-
-            for (; i < count; i++)
-                values[i] *= array[i];
+            Multiply(this, array, this);
 
             return this;
         }
