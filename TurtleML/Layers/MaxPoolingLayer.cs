@@ -54,7 +54,7 @@ namespace TurtleML.Layers
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            outputs.Clear();
+            outputs.Clear(float.MinValue);
 
             for (int z = 0; z < inputs.Depth; z++)
                 for (int y = 0; y < inputs.Height; y++)

@@ -97,6 +97,12 @@ namespace TurtleML
             return result;
         }
 
+        public void Clear(float value)
+        {
+            for (int i = 0, count = values.Length; i < count; i++)
+                values[i] = value;
+        }
+
         public static Tensor Create(float[] array)
         {
             var tensor = new Tensor(array.Length);
