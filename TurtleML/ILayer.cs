@@ -7,7 +7,7 @@ namespace TurtleML
     {
         Tensor Outputs { get; }
 
-        Tensor Backpropagate(Tensor errors, float learningRate);
+        Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate);
 
         Tensor CalculateOutputs(Tensor inputs, bool training = false);
 

@@ -13,21 +13,17 @@ namespace TurtleML.Layers
         private readonly ILayer inputLayer;
         private readonly int inputSize;
         private readonly float[] momentum;
-        private readonly float momentumRate;
         private readonly Tensor outputs;
         private readonly int outputSize;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
 
-        private FullyConnectedLayer(int outputSize, float momentumRate, IActivationFunction activation, ILayer inputLayer)
+        private FullyConnectedLayer(int outputSize, IActivationFunction activation, ILayer inputLayer)
         {
             if (outputSize < 1)
                 throw new ArgumentOutOfRangeException(nameof(outputSize), "output size must be greater than zero");
-            if (momentumRate < float.Epsilon)
-                throw new ArgumentOutOfRangeException(nameof(momentumRate), "momentum rate must be greater than zero");
 
             this.outputSize = outputSize;
-            this.momentumRate = momentumRate;
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
             this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
@@ -45,7 +41,7 @@ namespace TurtleML.Layers
 
         public Tensor Outputs => outputs;
 
-        public Tensor Backpropagate(Tensor errors, float learningRate)
+        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
             var inputs = inputLayer.Outputs;
 
@@ -127,7 +123,6 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private IActivationFunction activation;
-            private float momentumRate = 0.9f;
             private int outputCount;
 
             public Builder Activation(IActivationFunction activation)
@@ -139,14 +134,7 @@ namespace TurtleML.Layers
 
             public ILayer Build(ILayer inputLayer)
             {
-                return new FullyConnectedLayer(outputCount, momentumRate, activation, inputLayer);
-            }
-
-            public Builder MomentumRate(float momentumRate)
-            {
-                this.momentumRate = momentumRate;
-
-                return this;
+                return new FullyConnectedLayer(outputCount, activation, inputLayer);
             }
 
             public Builder Outputs(int outputCount)

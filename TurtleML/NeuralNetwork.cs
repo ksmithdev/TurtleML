@@ -11,14 +11,14 @@ namespace TurtleML
         private readonly ILayer[] layers;
         private readonly ILearningPolicy learningPolicy;
         private readonly ILossFunction loss;
-        private readonly float momentum;
+        private readonly float momentumRate;
         private readonly Random seed;
         private readonly bool shuffle;
 
-        private NeuralNetwork(int batchSize, float momentum, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, ILayerBuilder[] layers)
+        private NeuralNetwork(int batchSize, float momentumRate, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, ILayerBuilder[] layers)
         {
             this.batchSize = batchSize;
-            this.momentum = momentum;
+            this.momentumRate = momentumRate;
             this.shuffle = shuffle;
             this.seed = seed;
             this.learningPolicy = learningPolicy;
@@ -119,7 +119,7 @@ namespace TurtleML
             {
                 if (i > 0 && i % batchSize == 0)
                 {
-                    BackPropagate(errors, learningRate);
+                    BackPropagate(errors, learningRate, momentumRate);
                     errors.Clear();
                 }
 
@@ -134,18 +134,18 @@ namespace TurtleML
                 sumCost += loss.CalculateCost(actuals, expected);
             }
 
-            BackPropagate(errors, learningRate);
+            BackPropagate(errors, learningRate, momentumRate);
 
             return sumCost / trainingSet.Count;
         }
 
         protected void RaiseTrainingProgress(int epoch, float trainingError, float validationError, float learningRate, long cycleTime) => TrainingProgress?.Invoke(this, new TrainingProgressEventArgs(epoch, trainingError, validationError, learningRate, cycleTime));
 
-        private Tensor BackPropagate(Tensor errors, float learningRate)
+        private Tensor BackPropagate(Tensor errors, float learningRate, float momentum)
         {
             Tensor signals = errors;
             for (int l = layers.Length - 1; l > -1; l--)
-                signals = layers[l].Backpropagate(signals, learningRate);
+                signals = layers[l].Backpropagate(signals, learningRate, momentum);
             return signals;
         }
 
@@ -164,7 +164,7 @@ namespace TurtleML
             private ILearningPolicy learningPolicy;
             private float learningRate;
             private ILossFunction loss = new MeanSquaredError();
-            private float momentum;
+            private float momentumRate;
             private Random seed;
             private bool shuffle = false;
 
@@ -180,7 +180,7 @@ namespace TurtleML
 
             public NeuralNetwork Build()
             {
-                return new NeuralNetwork(batchSize, momentum, shuffle, seed, learningPolicy, loss, layers);
+                return new NeuralNetwork(batchSize, momentumRate, shuffle, seed, learningPolicy, loss, layers);
             }
 
             public Builder Layers(params ILayerBuilder[] layers)
@@ -190,19 +190,19 @@ namespace TurtleML
                 return this;
             }
 
-            public Builder LearningPolicy(ILearningPolicy learningPolicy, float momentum)
+            public Builder LearningPolicy(ILearningPolicy learningPolicy, float momentumRate)
             {
                 this.learningPolicy = learningPolicy;
-                this.momentum = momentum;
+                this.momentumRate = momentumRate;
 
                 return this;
             }
 
             [Obsolete("Obsolete. Use LearningPolicy() instead.")]
-            public Builder LearningRate(float learningRate, float momentum)
+            public Builder LearningRate(float learningRate, float momentumRate)
             {
                 this.learningRate = learningRate;
-                this.momentum = momentum;
+                this.momentumRate = momentumRate;
 
                 return this;
             }

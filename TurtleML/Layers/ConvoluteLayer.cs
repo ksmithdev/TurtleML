@@ -20,19 +20,17 @@ namespace TurtleML.Layers
         private readonly int inputDepth;
         private readonly ILayer inputLayer;
         private readonly float[] momentum;
-        private readonly float momentumRate;
         private readonly Tensor outputs;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
 
-        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, float momentumRate, IActivationFunction activation, ILayer inputLayer)
+        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, ILayer inputLayer)
         {
             this.activation = activation;
             this.filterWidth = filterWidth;
             this.filterHeight = filterHeight;
             this.filterStride = filterStride;
             this.filterDepth = filterDepth;
-            this.momentumRate = momentumRate;
             this.inputLayer = inputLayer;
 
             var inputs = inputLayer.Outputs;
@@ -56,7 +54,7 @@ namespace TurtleML.Layers
 
         public Tensor Outputs => outputs;
 
-        public Tensor Backpropagate(Tensor errors, float learningRate)
+        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
             var inputs = inputLayer.Outputs;
 
@@ -180,7 +178,6 @@ namespace TurtleML.Layers
             private int filterHeight;
             private int filterStride;
             private int filterWidth;
-            private float momentumRate = 0.9f;
 
             public Builder Activation(IActivationFunction activation)
             {
@@ -196,7 +193,7 @@ namespace TurtleML.Layers
                 if (activation == null)
                     throw new InvalidOperationException("activation cannot be null");
 
-                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, momentumRate, activation, inputLayer);
+                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, inputLayer);
             }
 
             public Builder Filters(int width, int height, int stride, int count)
@@ -205,13 +202,6 @@ namespace TurtleML.Layers
                 filterHeight = height;
                 filterStride = stride;
                 filterCount = count;
-
-                return this;
-            }
-
-            public Builder MomentumRate(float momentumRate)
-            {
-                this.momentumRate = momentumRate;
 
                 return this;
             }
