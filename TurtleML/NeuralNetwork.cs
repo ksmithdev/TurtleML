@@ -7,6 +7,7 @@ namespace TurtleML
 {
     public class NeuralNetwork
     {
+        private readonly int batchSize;
         private readonly ILayer[] layers;
         private readonly ILearningPolicy learningPolicy;
         private readonly ILossFunction loss;
@@ -14,8 +15,9 @@ namespace TurtleML
         private readonly Random seed;
         private readonly bool shuffle;
 
-        private NeuralNetwork(float momentum, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, ILayerBuilder[] layers)
+        private NeuralNetwork(int batchSize, float momentum, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, ILayerBuilder[] layers)
         {
+            this.batchSize = batchSize;
             this.momentum = momentum;
             this.shuffle = shuffle;
             this.seed = seed;
@@ -58,6 +60,22 @@ namespace TurtleML
                     layer.Dump(writer);
         }
 
+        public void Fit(TrainingSet trainingSet, TrainingSet validationSet, int epochs)
+        {
+            var stopwatch = new Stopwatch();
+            for (int epoch = 0; epoch < epochs; epoch++)
+            {
+                float learningRate = learningPolicy.GetLearningRate(epoch);
+
+                stopwatch.Restart();
+                float trainingError = Train(trainingSet, learningRate);
+                float validationError = Test(validationSet);
+                stopwatch.Stop();
+
+                RaiseTrainingProgress(epoch, trainingError, validationError, learningRate, stopwatch.ElapsedMilliseconds);
+            }
+        }
+
         public void Restore(string fileName)
         {
             using (var file = File.OpenRead(fileName))
@@ -80,10 +98,6 @@ namespace TurtleML
                 var expected = trainingSet[i].Item2;
 
                 Tensor actuals = CalculateOutputs(inputs);
-                Tensor errors = new Tensor(actuals.Length);
-
-                for (int o = 0; o < actuals.Length; o++)
-                    errors[o] = expected[o] - actuals[o];
 
                 sumCost += loss.CalculateCost(actuals, expected);
             }
@@ -96,43 +110,36 @@ namespace TurtleML
             if (shuffle)
                 trainingSet.Shuffle();
 
+            var lastLayer = layers[layers.Length - 1];
+            var outputs = lastLayer.Outputs;
+            Tensor errors = new Tensor(outputs.Dimensions);
+
             float sumCost = 0f;
             for (int i = 0, count = trainingSet.Count; i < count; i++)
             {
+                if (i > 0 && i % batchSize == 0)
+                {
+                    BackPropagate(errors, learningRate);
+                    errors.Clear();
+                }
+
                 var inputs = trainingSet[i].Item1;
                 var expected = trainingSet[i].Item2;
 
                 Tensor actuals = CalculateTrainingOutputs(inputs);
-                Tensor errors = new Tensor(actuals.Length);
 
                 for (int o = 0; o < actuals.Length; o++)
-                    errors[o] = expected[o] - actuals[o];
+                    errors[o] += expected[o] - actuals[o];
 
                 sumCost += loss.CalculateCost(actuals, expected);
-
-                BackPropagate(errors, learningRate);
             }
+
+            BackPropagate(errors, learningRate);
 
             return sumCost / trainingSet.Count;
         }
 
-        public void Train(TrainingSet trainingSet, TrainingSet validationSet, int epochs)
-        {
-            var stopwatch = new Stopwatch();
-            for (int i = 0; i < epochs; i++)
-            {
-                float learningRate = learningPolicy.GetLearningRate(i);
-
-                stopwatch.Restart();
-                float trainingError = Train(trainingSet, learningRate);
-                float validationError = Test(validationSet);
-                stopwatch.Stop();
-
-                RaiseTrainingProgress(trainingError, validationError, learningRate, stopwatch.ElapsedMilliseconds);
-            }
-        }
-
-        protected void RaiseTrainingProgress(float trainingError, float validationError, float learningRate, long cycleTime) => TrainingProgress?.Invoke(this, new TrainingProgressEventArgs(trainingError, validationError, learningRate, cycleTime));
+        protected void RaiseTrainingProgress(int epoch, float trainingError, float validationError, float learningRate, long cycleTime) => TrainingProgress?.Invoke(this, new TrainingProgressEventArgs(epoch, trainingError, validationError, learningRate, cycleTime));
 
         private Tensor BackPropagate(Tensor errors, float learningRate)
         {
@@ -152,8 +159,8 @@ namespace TurtleML
 
         public class Builder
         {
+            private int batchSize = 1;
             private ILayerBuilder[] layers;
-            private ILearningPolicy learning;
             private ILearningPolicy learningPolicy;
             private float learningRate;
             private ILossFunction loss = new MeanSquaredError();
@@ -161,9 +168,19 @@ namespace TurtleML
             private Random seed;
             private bool shuffle = false;
 
+            public Builder BatchSize(int batchSize)
+            {
+                if (batchSize < 1)
+                    throw new ArgumentOutOfRangeException(nameof(batchSize), "batch size must be greater than 0");
+
+                this.batchSize = batchSize;
+
+                return this;
+            }
+
             public NeuralNetwork Build()
             {
-                return new NeuralNetwork(momentum, shuffle, seed, learningPolicy, loss, layers);
+                return new NeuralNetwork(batchSize, momentum, shuffle, seed, learningPolicy, loss, layers);
             }
 
             public Builder Layers(params ILayerBuilder[] layers)
@@ -176,6 +193,7 @@ namespace TurtleML
             public Builder LearningPolicy(ILearningPolicy learningPolicy, float momentum)
             {
                 this.learningPolicy = learningPolicy;
+                this.momentum = momentum;
 
                 return this;
             }
