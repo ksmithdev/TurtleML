@@ -13,6 +13,7 @@ namespace TurtleML
         private readonly float momentumRate;
         private readonly Random seed;
         private readonly bool shuffle;
+        private bool aborted;
 
         private NeuralNetwork(float momentumRate, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, ILayerBuilder[] layers)
         {
@@ -37,6 +38,11 @@ namespace TurtleML
 
         public ILayer[] Layers => layers;
 
+        public void Abort()
+        {
+            aborted = true;
+        }
+
         public Tensor CalculateOutputs(Tensor inputs)
         {
             Tensor results = inputs;
@@ -60,9 +66,14 @@ namespace TurtleML
 
         public void Fit(TrainingSet trainingSet, TrainingSet validationSet, int epochs)
         {
+            aborted = false;
+
             var stopwatch = new Stopwatch();
             for (int epoch = 0; epoch < epochs; epoch++)
             {
+                if (aborted)
+                    break;
+
                 float learningRate = learningPolicy.GetLearningRate(epoch);
 
                 stopwatch.Restart();

@@ -21,6 +21,6 @@ namespace TurtleML
 
         public float ValidationError { get; }
 
-        private float LearningRate { get; }
+        public float LearningRate { get; }
     }
 }

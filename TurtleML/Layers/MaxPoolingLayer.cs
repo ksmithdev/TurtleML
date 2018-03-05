@@ -26,8 +26,8 @@ namespace TurtleML.Layers
             var inputs = inputLayer.Outputs;
             (int inputWidth, int inputHeight, int inputDepth) = inputs.Dimensions;
 
-            int outputWidth = inputWidth / sampleWidth;
-            int outputHeight = inputHeight / sampleHeight;
+            int outputWidth = (inputWidth + inputWidth % sampleWidth) / sampleWidth;
+            int outputHeight = (inputHeight + inputHeight % sampleHeight) / sampleHeight;
 
             outputs = new Tensor(outputWidth, outputHeight, inputDepth);
             signals = new Tensor(inputWidth, inputHeight, inputDepth);
