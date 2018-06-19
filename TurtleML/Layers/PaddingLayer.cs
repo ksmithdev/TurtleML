@@ -28,10 +28,16 @@ namespace TurtleML.Layers
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
+            var width = signals.Width;
             for (int z = 0, depth = signals.Depth; z < depth; z++)
                 for (int y = 0, height = signals.Height; y < height; y++)
-                    for (int x = 0, width = signals.Width; x < width; x++)
-                        signals[x, y, z] = errors[x + padding, y + padding, z];
+                {
+                    Tensor.Copy(errors, padding, y + padding, z, signals, 0, y, z, width);
+
+                    // old way
+                    //for (int x = 0, width = signals.Width; x < width; x++)
+                    //    signals[x, y, z] = errors[x + padding, y + padding, z];
+                }
 
             return signals;
         }
@@ -39,12 +45,15 @@ namespace TurtleML.Layers
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
             var width = inputs.Width;
-            var height = inputs.Height;
-            var depth = inputs.Depth;
-            for (int z = 0; z < depth; z++)
-                for (int y = 0; y < height; y++)
-                    for (int x = 0; x < width; x++)
-                        outputs[x + padding, y + padding, z] = inputs[x, y, z];
+            for (int z = 0, depth = inputs.Depth; z < depth; z++)
+                for (int y = 0, height = inputs.Height; y < height; y++)
+                {
+                    Tensor.Copy(inputs, 0, y, z, outputs, padding, y + padding, z, width);
+
+                    // old way
+                    //for (int x = 0; x < width; x++)
+                    //    outputs[x + padding, y + padding, z] = inputs[x, y, z];
+                }
 
             return outputs;
         }

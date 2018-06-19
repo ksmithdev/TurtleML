@@ -85,6 +85,29 @@ namespace TurtleML
             }
         }
 
+        public void Fit(TrainingSet trainingSet, TrainingSet validationSet, TimeSpan timeSpan)
+        {
+            aborted = false;
+
+            var stopwatch = new Stopwatch();
+            var elapsedTime = TimeSpan.Zero;
+            var epoch = 0;
+
+            while(elapsedTime < timeSpan && !aborted)
+            {
+                float learningRate = learningPolicy.GetLearningRate(epoch);
+
+                stopwatch.Restart();
+                float trainingError = Train(trainingSet, learningRate);
+                float validationError = Test(validationSet);
+                stopwatch.Stop();
+
+                elapsedTime += stopwatch.Elapsed;
+
+                RaiseTrainingProgress(epoch++, trainingError, validationError, learningRate, stopwatch.ElapsedMilliseconds);
+            }
+        }
+
         public void Restore(string fileName)
         {
             using (var file = File.OpenRead(fileName))

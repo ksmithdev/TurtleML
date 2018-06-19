@@ -26,8 +26,8 @@ namespace TurtleML
         {
         }
 
-        public Tensor(int size)
-            : this(size, 1, 1)
+        public Tensor(int length)
+            : this(length, 1, 1)
         {
         }
 
@@ -95,6 +95,14 @@ namespace TurtleML
                 result[i] = tensor.values[i] + array[i];
 
             return result;
+        }
+
+        public static void Copy(Tensor src, int srcX, int srcY, int srcZ, Tensor dst, int dstX, int dstY, int dstZ, int count)
+        {
+            var srcOffset = src.IndexOf(srcX, srcY, srcZ);
+            var dstOffset = dst.IndexOf(dstX, dstY, dstZ);
+
+            Array.Copy(src.values, srcOffset, dst.values, dstOffset, count);
         }
 
         public static Tensor Create(float[] array)
@@ -221,7 +229,7 @@ namespace TurtleML
 
         public void CopyTo(float[] array, int offset)
         {
-            Buffer.BlockCopy(values, 0, array, offset * sizeof(float), values.Length * sizeof(float));
+            Array.Copy(values, 0, array, offset, values.Length);
         }
 
         public float Dot(float[] array) => Dot(values, array);
