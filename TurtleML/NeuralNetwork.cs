@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using TurtleML.Loss;
@@ -7,7 +9,6 @@ namespace TurtleML
 {
     public class NeuralNetwork
     {
-        private readonly ILayer[] layers;
         private readonly ILearningPolicy learningPolicy;
         private readonly ILossFunction loss;
         private readonly float momentumRate;
@@ -15,28 +16,31 @@ namespace TurtleML
         private readonly bool shuffle;
         private bool aborted;
 
-        private NeuralNetwork(float momentumRate, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, ILayerBuilder[] layers)
+        private NeuralNetwork(float momentumRate, bool shuffle, Random seed, ILearningPolicy learningPolicy, ILossFunction loss, IReadOnlyList<ILayerBuilder> layers)
         {
             this.momentumRate = momentumRate;
             this.shuffle = shuffle;
             this.seed = seed;
             this.learningPolicy = learningPolicy;
             this.loss = loss;
-            this.layers = new ILayer[layers.Length];
+
+            var layerCollection = new List<ILayer>(layers.Count);
 
             ILayer inputLayer = null;
-            for (int l = 0; l < layers.Length; l++)
+            for (int l = 0; l < layers.Count; l++)
             {
                 inputLayer = layers[l].Build(inputLayer);
                 inputLayer.Initialize(seed);
 
-                this.layers[l] = inputLayer;
+                layerCollection[l] = inputLayer;
             }
+
+            Layers = new ReadOnlyCollection<ILayer>(layerCollection);
         }
 
         public event EventHandler<TrainingProgressEventArgs> TrainingProgress;
 
-        public ILayer[] Layers => layers;
+        public ReadOnlyCollection<ILayer> Layers { get; }
 
         public void Abort()
         {
@@ -45,9 +49,9 @@ namespace TurtleML
 
         public Tensor CalculateOutputs(Tensor inputs)
         {
-            Tensor results = inputs;
-            for (int l = 0, count = layers.Length; l < count; l++)
-                results = layers[l].CalculateOutputs(results, training: false);
+            var results = inputs;
+            for (int l = 0, count = Layers.Count; l < count; l++)
+                results = Layers[l].CalculateOutputs(results, training: false);
             return results;
         }
 
@@ -60,7 +64,7 @@ namespace TurtleML
         public void Dump(Stream stream)
         {
             using (var writer = new BinaryWriter(stream))
-                foreach (var layer in layers)
+                foreach (var layer in Layers)
                     layer.Dump(writer);
         }
 
@@ -117,7 +121,7 @@ namespace TurtleML
         public void Restore(Stream stream)
         {
             using (var reader = new BinaryReader(stream))
-                foreach (var layer in layers)
+                foreach (var layer in Layers)
                     layer.Restore(reader);
         }
 
@@ -129,7 +133,7 @@ namespace TurtleML
                 var inputs = trainingSet[i].Item1;
                 var expected = trainingSet[i].Item2;
 
-                Tensor actuals = CalculateOutputs(inputs);
+                var actuals = CalculateOutputs(inputs);
 
                 sumCost += loss.CalculateCost(actuals, expected);
             }
@@ -142,9 +146,9 @@ namespace TurtleML
             if (shuffle)
                 trainingSet.Shuffle();
 
-            var lastLayer = layers[layers.Length - 1];
+            var lastLayer = Layers[Layers.Count - 1];
             var outputs = lastLayer.Outputs;
-            Tensor errors = new Tensor(outputs.Dimensions);
+            var errors = new Tensor(outputs.Dimensions);
 
             float sumCost = 0f;
             for (int i = 0, count = trainingSet.Count; i < count; i++)
@@ -154,7 +158,7 @@ namespace TurtleML
                 var inputs = trainingSet[i].Item1;
                 var expected = trainingSet[i].Item2;
 
-                Tensor actuals = CalculateTrainingOutputs(inputs);
+                var actuals = CalculateTrainingOutputs(inputs);
 
                 sumCost += loss.CalculateCost(actuals, expected);
 
@@ -171,17 +175,17 @@ namespace TurtleML
 
         private Tensor BackPropagate(Tensor errors, float learningRate, float momentum)
         {
-            Tensor signals = errors;
-            for (int l = layers.Length - 1; l > -1; l--)
-                signals = layers[l].Backpropagate(signals, learningRate, momentum);
+            var signals = errors;
+            for (int l = Layers.Count - 1; l > -1; l--)
+                signals = Layers[l].Backpropagate(signals, learningRate, momentum);
             return signals;
         }
 
         private Tensor CalculateTrainingOutputs(Tensor inputs)
         {
-            Tensor results = inputs;
-            for (int l = 0, count = layers.Length; l < count; l++)
-                results = layers[l].CalculateOutputs(results, training: true);
+            var results = inputs;
+            for (int l = 0, count = Layers.Count; l < count; l++)
+                results = Layers[l].CalculateOutputs(results, training: true);
             return results;
         }
 

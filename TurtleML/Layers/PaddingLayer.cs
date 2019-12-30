@@ -16,9 +16,9 @@ namespace TurtleML.Layers
             this.inputLayer = inputLayer;
 
             var inputs = inputLayer.Outputs;
-            var width = inputs.Width + padding * 2;
-            var height = inputs.Height + padding * 2;
-            var depth = inputs.Depth;
+            int width = inputs.Width + padding * 2;
+            int height = inputs.Height + padding * 2;
+            int depth = inputs.Depth;
 
             outputs = new Tensor(width, height, depth);
             signals = new Tensor(inputs.Dimensions);
@@ -28,7 +28,7 @@ namespace TurtleML.Layers
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
-            var width = signals.Width;
+            int width = signals.Width;
             for (int z = 0, depth = signals.Depth; z < depth; z++)
                 for (int y = 0, height = signals.Height; y < height; y++)
                 {
@@ -44,7 +44,7 @@ namespace TurtleML.Layers
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            var width = inputs.Width;
+            int width = inputs.Width;
             for (int z = 0, depth = inputs.Depth; z < depth; z++)
                 for (int y = 0, height = inputs.Height; y < height; y++)
                 {
@@ -74,10 +74,7 @@ namespace TurtleML.Layers
         {
             private int size;
 
-            public ILayer Build(ILayer inputLayer)
-            {
-                return new PaddingLayer(size, inputLayer);
-            }
+            public ILayer Build(ILayer inputLayer) => new PaddingLayer(size, inputLayer);
 
             public Builder Padding(int size)
             {

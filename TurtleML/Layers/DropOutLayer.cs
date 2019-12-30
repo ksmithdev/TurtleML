@@ -34,15 +34,12 @@ namespace TurtleML.Layers
         {
             Debug.Assert(inputs.Length == outputs.Length, $"Your input array (size: {inputs.Length}) does not match the specified size of {outputs.Length}.");
 
-            if (training)
-            {
-                for (int h = 0, count = outputs.Length; h < count; h++)
-                    outputs[h] = random.NextDouble() >= dropOut ? inputs[h] : 0f;
+            if (!training) return inputs;
 
-                return outputs;
-            }
+            for (int h = 0, count = outputs.Length; h < count; h++)
+                outputs[h] = random.NextDouble() >= dropOut ? inputs[h] : 0f;
 
-            return inputs;
+            return outputs;
         }
 
         public void Dump(BinaryWriter writer)
