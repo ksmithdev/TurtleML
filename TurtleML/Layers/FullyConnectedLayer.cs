@@ -17,6 +17,7 @@ namespace TurtleML.Layers
         private readonly int outputSize;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
+        private readonly Tensor derivatives;
 
         private FullyConnectedLayer(int outputSize, IActivationFunction activation, ILayer inputLayer)
         {
@@ -33,6 +34,7 @@ namespace TurtleML.Layers
             bias = new float[outputSize];
             momentum = new float[outputSize];
             outputs = new Tensor(outputSize);
+            derivatives = new Tensor(outputSize);
             signals = new Tensor(inputs.Dimensions);
             weights = new Tensor[outputSize];
             for (int w = 0; w < outputSize; w++)
@@ -47,7 +49,6 @@ namespace TurtleML.Layers
 
             signals.Clear();
 
-            var derivatives = new Tensor(outputs.Dimensions);
             for (int d = 0, count = outputs.Length; d < count; d++)
                 derivatives[d] = activation.Derivative(outputs[d]);
 

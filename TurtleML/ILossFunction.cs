@@ -2,6 +2,10 @@
 {
     public interface ILossFunction
     {
-        float CalculateCost(Tensor actuals, Tensor expected);
+        float Calculate(float actual, float expected);
+
+        float CalculateTotal(Tensor actuals, Tensor expected);
+
+        float Derivative(float actual, float expected);
     }
 }

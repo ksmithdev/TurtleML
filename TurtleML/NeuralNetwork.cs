@@ -12,7 +12,6 @@ namespace TurtleML
         private readonly ILearningPolicy learningPolicy;
         private readonly ILossFunction loss;
         private readonly float momentumRate;
-        private readonly Random seed;
         private readonly bool shuffle;
         private bool aborted;
 
@@ -20,7 +19,6 @@ namespace TurtleML
         {
             this.momentumRate = momentumRate;
             this.shuffle = shuffle;
-            this.seed = seed;
             this.learningPolicy = learningPolicy;
             this.loss = loss;
 
@@ -32,7 +30,7 @@ namespace TurtleML
                 inputLayer = layers[l].Build(inputLayer);
                 inputLayer.Initialize(seed);
 
-                layerCollection[l] = inputLayer;
+                layerCollection.Insert(l, inputLayer);
             }
 
             Layers = new ReadOnlyCollection<ILayer>(layerCollection);
@@ -97,7 +95,7 @@ namespace TurtleML
             var elapsedTime = TimeSpan.Zero;
             var epoch = 0;
 
-            while(elapsedTime < timeSpan && !aborted)
+            while (elapsedTime < timeSpan && !aborted)
             {
                 float learningRate = learningPolicy.GetLearningRate(epoch);
 
@@ -125,20 +123,20 @@ namespace TurtleML
                     layer.Restore(reader);
         }
 
-        public float Test(TrainingSet trainingSet)
+        public float Test(TrainingSet validationSet)
         {
             float sumCost = 0f;
-            for (int i = 0, count = trainingSet.Count; i < count; i++)
+            for (int i = 0, count = validationSet.Count; i < count; i++)
             {
-                var inputs = trainingSet[i].Item1;
-                var expected = trainingSet[i].Item2;
+                var inputs = validationSet[i].Item1;
+                var expected = validationSet[i].Item2;
 
                 var actuals = CalculateOutputs(inputs);
 
-                sumCost += loss.CalculateCost(actuals, expected);
+                sumCost += loss.CalculateTotal(actuals, expected);
             }
 
-            return sumCost / trainingSet.Count;
+            return sumCost / validationSet.Count;
         }
 
         public float Train(TrainingSet trainingSet, float learningRate)
@@ -155,15 +153,14 @@ namespace TurtleML
             {
                 errors.Clear();
 
-                var inputs = trainingSet[i].Item1;
-                var expected = trainingSet[i].Item2;
+                (var inputs, var expected) = trainingSet[i];
 
                 var actuals = CalculateTrainingOutputs(inputs);
 
-                sumCost += loss.CalculateCost(actuals, expected);
+                sumCost += loss.CalculateTotal(actuals, expected);
 
                 for (int o = 0; o < actuals.Length; o++)
-                    errors[o] = expected[o] - actuals[o];
+                    errors[o] = loss.Derivative(actuals[o], expected[o]);
 
                 BackPropagate(errors, learningRate, momentumRate);
             }
@@ -193,16 +190,12 @@ namespace TurtleML
         {
             private ILayerBuilder[] layers;
             private ILearningPolicy learningPolicy;
-            private float learningRate;
             private ILossFunction loss = new MeanSquaredError();
             private float momentumRate;
             private Random seed;
             private bool shuffle = false;
 
-            public NeuralNetwork Build()
-            {
-                return new NeuralNetwork(momentumRate, shuffle, seed, learningPolicy, loss, layers);
-            }
+            public NeuralNetwork Build() => new NeuralNetwork(momentumRate, shuffle, seed, learningPolicy, loss, layers);
 
             public Builder Layers(params ILayerBuilder[] layers)
             {
@@ -214,15 +207,6 @@ namespace TurtleML
             public Builder LearningPolicy(ILearningPolicy learningPolicy, float momentumRate)
             {
                 this.learningPolicy = learningPolicy;
-                this.momentumRate = momentumRate;
-
-                return this;
-            }
-
-            [Obsolete("Obsolete. Use LearningPolicy() instead.")]
-            public Builder LearningRate(float learningRate, float momentumRate)
-            {
-                this.learningRate = learningRate;
                 this.momentumRate = momentumRate;
 
                 return this;
