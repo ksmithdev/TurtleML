@@ -190,7 +190,7 @@ namespace TurtleML
         {
             private ILayerBuilder[] layers;
             private ILearningPolicy learningPolicy;
-            private ILossFunction loss = new MeanSquaredError();
+            private ILossFunction loss = new MeanSquareError();
             private float momentumRate;
             private Random seed;
             private bool shuffle = false;

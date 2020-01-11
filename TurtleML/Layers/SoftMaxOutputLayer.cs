@@ -5,33 +5,30 @@ namespace TurtleML.Layers
 {
     public class SoftMaxOutputLayer : ILayer
     {
-        private readonly ILayer inputLayer;
-        private readonly Tensor outputs;
-
         private SoftMaxOutputLayer(ILayer inputLayer)
         {
-            this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
+            InputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
             var inputs = inputLayer.Outputs;
             var inputSize = inputs.Length;
 
-            outputs = new Tensor(inputSize);
+            Outputs = new Tensor(inputSize);
         }
 
-        public ILayer InputLayer => inputLayer;
+        public ILayer InputLayer { get; }
 
-        public Tensor Outputs => outputs;
+        public Tensor Outputs { get; }
 
-        public int OutputSize => outputs.Length;
+        public int OutputSize => Outputs.Length;
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
-            Tensor signals = new Tensor(outputs.Length);
+            var signals = new Tensor(Outputs.Length);
 
-            for (int o = 0; o < outputs.Length; o++)
+            for (int o = 0; o < Outputs.Length; o++)
             {
                 float error = errors[o];
-                float output = outputs[o];
+                float output = Outputs[o];
                 float derivative = (1f - output) * output;
 
                 signals[o] = error * derivative;
@@ -47,9 +44,9 @@ namespace TurtleML.Layers
                 sum += (float)Math.Exp(inputs[i]);
 
             for (int i = 0; i < inputs.Length; i++)
-                outputs[i] = (float)Math.Exp(inputs[i]) / sum;
+                Outputs[i] = (float)Math.Exp(inputs[i]) / sum;
 
-            return outputs;
+            return Outputs;
         }
 
         public void Dump(BinaryWriter writer)

@@ -1,6 +1,6 @@
 ﻿namespace TurtleML.Loss
 {
-    public class MeanSquaredError : ILossFunction
+    public class MeanSquareError : ILossFunction
     {
         public float Calculate(float actual, float expected) => (actual - expected) * (actual - expected);
 
