@@ -10,7 +10,10 @@ namespace TurtleML.Loss
         {
             float absErrorCost = 0f;
             for (int o = 0; o < actuals.Length; o++)
+            {
                 absErrorCost += Calculate(actuals[o], expected[o]);
+            }
+
             return absErrorCost;
         }
 

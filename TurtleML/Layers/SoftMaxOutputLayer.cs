@@ -3,7 +3,7 @@ using System.IO;
 
 namespace TurtleML.Layers
 {
-    public class SoftMaxOutputLayer : ILayer
+    public sealed class SoftMaxOutputLayer : ILayer
     {
         private SoftMaxOutputLayer(ILayer inputLayer)
         {
@@ -41,10 +41,14 @@ namespace TurtleML.Layers
         {
             float sum = 0f;
             for (int i = 0; i < inputs.Length; i++)
+            {
                 sum += (float)Math.Exp(inputs[i]);
+            }
 
             for (int i = 0; i < inputs.Length; i++)
+            {
                 Outputs[i] = (float)Math.Exp(inputs[i]) / sum;
+            }
 
             return Outputs;
         }

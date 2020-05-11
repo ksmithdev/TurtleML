@@ -3,16 +3,14 @@ using System.IO;
 
 namespace TurtleML.Layers
 {
-    public class InputLayer : ILayer
+    public sealed class InputLayer : ILayer
     {
-        private readonly Tensor outputs;
-
-        private InputLayer(int width, int height, int depth, ILayer inputLayer)
+        private InputLayer(int width, int height, int depth)
         {
-            outputs = new Tensor(width, height, depth);
+            Outputs = new Tensor(width, height, depth);
         }
 
-        public Tensor Outputs => outputs;
+        public Tensor Outputs { get; }
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
@@ -21,9 +19,9 @@ namespace TurtleML.Layers
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            outputs.Load(inputs);
+            Outputs.Load(inputs);
 
-            return outputs;
+            return Outputs;
         }
 
         public void Dump(BinaryWriter writer)
@@ -46,7 +44,7 @@ namespace TurtleML.Layers
 
             public ILayer Build(ILayer inputLayer)
             {
-                return new InputLayer(width, height, depth, inputLayer);
+                return new InputLayer(width, height, depth);
             }
 
             public Builder Dimensions(int width, int height, int depth)

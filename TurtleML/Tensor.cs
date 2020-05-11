@@ -7,16 +7,14 @@ namespace TurtleML
 {
     public class Tensor : IEnumerable<float>
     {
-        private readonly int depth;
         private readonly int height;
         private readonly float[] values;
-        private readonly int width;
 
         public Tensor(int width, int height, int depth)
         {
-            this.width = width;
+            this.Width = width;
             this.height = height;
-            this.depth = depth;
+            this.Depth = depth;
 
             values = new float[width * height * depth];
         }
@@ -40,20 +38,20 @@ namespace TurtleML
         {
             this.values = values;
 
-            width = values.Length;
+            Width = values.Length;
             height = 1;
-            depth = 1;
+            Depth = 1;
         }
 
-        public int Depth => depth;
+        public int Depth { get; }
 
-        public (int, int, int) Dimensions => (width, height, depth);
+        public (int, int, int) Dimensions => (Width, height, Depth);
 
         public int Height => height;
 
         public int Length => values.Length;
 
-        public int Width => width;
+        public int Width { get; }
 
         public float this[int i]
         {
@@ -92,7 +90,9 @@ namespace TurtleML
             }
 
             for (; i < count; i++)
+            {
                 result[i] = tensor.values[i] + array[i];
+            }
 
             return result;
         }
@@ -131,7 +131,9 @@ namespace TurtleML
             }
 
             for (; i < count; i++)
+            {
                 accumulator += array1[i] * array2[i];
+            }
 
             return accumulator;
         }
@@ -157,7 +159,9 @@ namespace TurtleML
             }
 
             for (; i < count; i++)
+            {
                 result[i] = tensor.values[i] * value;
+            }
         }
 
         public static void Multiply(Tensor tensor, float[] array, Tensor result)
@@ -175,7 +179,9 @@ namespace TurtleML
             }
 
             for (; i < count; i++)
+            {
                 result[i] = tensor.values[i] * array[i];
+            }
         }
 
         public static Tensor Multiply(Tensor tensor1, Tensor tensor2) => Multiply(tensor1, tensor2.values);
@@ -209,7 +215,9 @@ namespace TurtleML
             }
 
             for (; i < count; i++)
+            {
                 values[i] += array[i];
+            }
 
             return this;
         }
@@ -217,7 +225,9 @@ namespace TurtleML
         public void Clear(float value)
         {
             for (int i = 0, count = values.Length; i < count; i++)
+            {
                 values[i] = value;
+            }
         }
 
         public void Clear()
@@ -248,12 +258,12 @@ namespace TurtleML
 
         public int IndexOf(int x, int y)
         {
-            return x + y * width;
+            return x + (y * Width);
         }
 
         public int IndexOf(int x, int y, int z)
         {
-            return x + (y * width) + (z * width * height);
+            return x + (y * Width) + (z * Width * height);
         }
 
         public void Load(Tensor source, int sourceOffset) => Load(source.values, sourceOffset);

@@ -13,7 +13,7 @@
 
         public float GetLearningRate(int epoch)
         {
-            return initialLearningRate / (1f + epoch / decay);
+            return initialLearningRate / (1f + (epoch / decay));
         }
     }
 }

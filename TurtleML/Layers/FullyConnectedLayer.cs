@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace TurtleML.Layers
 {
-    public class FullyConnectedLayer : ILayer
+    public sealed class FullyConnectedLayer : ILayer
     {
         private readonly IActivationFunction activation;
         private readonly float[] bias;
@@ -13,7 +13,6 @@ namespace TurtleML.Layers
         private readonly ILayer inputLayer;
         private readonly int inputSize;
         private readonly float[] momentum;
-        private readonly Tensor outputs;
         private readonly int outputSize;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
@@ -22,7 +21,9 @@ namespace TurtleML.Layers
         private FullyConnectedLayer(int outputSize, IActivationFunction activation, ILayer inputLayer)
         {
             if (outputSize < 1)
+            {
                 throw new ArgumentOutOfRangeException(nameof(outputSize), "output size must be greater than zero");
+            }
 
             this.outputSize = outputSize;
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
@@ -33,15 +34,17 @@ namespace TurtleML.Layers
 
             bias = new float[outputSize];
             momentum = new float[outputSize];
-            outputs = new Tensor(outputSize);
+            Outputs = new Tensor(outputSize);
             derivatives = new Tensor(outputSize);
             signals = new Tensor(inputs.Dimensions);
             weights = new Tensor[outputSize];
             for (int w = 0; w < outputSize; w++)
+            {
                 weights[w] = new Tensor(inputSize);
+            }
         }
 
-        public Tensor Outputs => outputs;
+        public Tensor Outputs { get; }
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
@@ -49,8 +52,10 @@ namespace TurtleML.Layers
 
             signals.Clear();
 
-            for (int d = 0, count = outputs.Length; d < count; d++)
-                derivatives[d] = activation.Derivative(outputs[d]);
+            for (int d = 0, count = Outputs.Length; d < count; d++)
+            {
+                derivatives[d] = activation.Derivative(Outputs[d]);
+            }
 
             var gradients = derivatives.Multiply(errors);
 
@@ -61,7 +66,7 @@ namespace TurtleML.Layers
                 signals.Add(Tensor.Multiply(weights[o], gradient));
 
                 float delta = gradient * learningRate;
-                float force = momentumRate * momentum[o] + delta;
+                float force = (momentumRate * momentum[o]) + delta;
 
                 momentum[o] = delta;
 
@@ -78,9 +83,11 @@ namespace TurtleML.Layers
             Debug.Assert(inputs.Length == inputSize, $"Your input array (size: {inputs.Length}) does not match the specified size of {inputSize}.");
 
             for (int o = 0; o < outputSize; o++)
-                outputs[o] = activation.Activate(Tensor.Dot(inputs, weights[o]) + bias[o]);
+            {
+                Outputs[o] = activation.Activate(Tensor.Dot(inputs, weights[o]) + bias[o]);
+            }
 
-            return outputs;
+            return Outputs;
         }
 
         public void Dump(BinaryWriter writer)
@@ -90,7 +97,10 @@ namespace TurtleML.Layers
             for (int o = 0; o < outputSize; o++)
             {
                 for (int w = 0; w < inputSize; w++)
+                {
                     writer.Write(weights[o][w]);
+                }
+
                 writer.Write(bias[o]);
             }
         }
@@ -102,8 +112,11 @@ namespace TurtleML.Layers
             for (int o = 0; o < outputSize; o++)
             {
                 for (int w = 0; w < inputSize; w++)
-                    weights[o][w] = (float)rnd.NextDouble() * (limit + limit) - limit;
-                bias[o] = (float)rnd.NextDouble() * (limit + limit) - limit;
+                {
+                    weights[o][w] = ((float)rnd.NextDouble() * (limit + limit)) - limit;
+                }
+
+                bias[o] = ((float)rnd.NextDouble() * (limit + limit)) - limit;
             }
         }
 
@@ -116,7 +129,10 @@ namespace TurtleML.Layers
             for (int o = 0; o < outputSize; o++)
             {
                 for (int w = 0; w < inputSize; w++)
+                {
                     weights[o][w] = reader.ReadSingle();
+                }
+
                 bias[o] = reader.ReadSingle();
             }
         }
@@ -141,7 +157,9 @@ namespace TurtleML.Layers
             public Builder Outputs(int outputCount)
             {
                 if (outputCount < 1)
+                {
                     throw new ArgumentOutOfRangeException("output size must be greater than zero", nameof(outputCount));
+                }
 
                 this.outputCount = outputCount;
 

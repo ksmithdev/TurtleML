@@ -7,7 +7,7 @@ using TurtleML.Loss;
 
 namespace TurtleML
 {
-    public class NeuralNetwork
+    public sealed class NeuralNetwork
     {
         private readonly ILearningPolicy learningPolicy;
         private readonly ILossFunction loss;
@@ -49,21 +49,30 @@ namespace TurtleML
         {
             var results = inputs;
             for (int l = 0, count = Layers.Count; l < count; l++)
+            {
                 results = Layers[l].CalculateOutputs(results, training: false);
+            }
+
             return results;
         }
 
         public void Dump(string path)
         {
             using (var file = File.Create(path))
+            {
                 Dump(file);
+            }
         }
 
         public void Dump(Stream stream)
         {
             using (var writer = new BinaryWriter(stream))
+            {
                 foreach (var layer in Layers)
+                {
                     layer.Dump(writer);
+                }
+            }
         }
 
         public void Fit(TrainingSet trainingSet, TrainingSet validationSet, int epochs)
@@ -74,7 +83,9 @@ namespace TurtleML
             for (int epoch = 0; epoch < epochs; epoch++)
             {
                 if (aborted)
+                {
                     break;
+                }
 
                 float learningRate = learningPolicy.GetLearningRate(epoch);
 
@@ -113,14 +124,20 @@ namespace TurtleML
         public void Restore(string fileName)
         {
             using (var file = File.OpenRead(fileName))
+            {
                 Restore(file);
+            }
         }
 
         public void Restore(Stream stream)
         {
             using (var reader = new BinaryReader(stream))
+            {
                 foreach (var layer in Layers)
+                {
                     layer.Restore(reader);
+                }
+            }
         }
 
         public float Test(TrainingSet validationSet)
@@ -142,7 +159,9 @@ namespace TurtleML
         public float Train(TrainingSet trainingSet, float learningRate)
         {
             if (shuffle)
+            {
                 trainingSet.Shuffle();
+            }
 
             var lastLayer = Layers[Layers.Count - 1];
             var outputs = lastLayer.Outputs;
@@ -160,7 +179,9 @@ namespace TurtleML
                 sumCost += loss.CalculateTotal(actuals, expected);
 
                 for (int o = 0; o < actuals.Length; o++)
+                {
                     errors[o] = loss.Derivative(actuals[o], expected[o]);
+                }
 
                 BackPropagate(errors, learningRate, momentumRate);
             }
@@ -174,7 +195,10 @@ namespace TurtleML
         {
             var signals = errors;
             for (int l = Layers.Count - 1; l > -1; l--)
+            {
                 signals = Layers[l].Backpropagate(signals, learningRate, momentum);
+            }
+
             return signals;
         }
 
@@ -182,7 +206,10 @@ namespace TurtleML
         {
             var results = inputs;
             for (int l = 0, count = Layers.Count; l < count; l++)
+            {
                 results = Layers[l].CalculateOutputs(results, training: true);
+            }
+
             return results;
         }
 

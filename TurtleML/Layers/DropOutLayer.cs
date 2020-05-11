@@ -4,26 +4,25 @@ using System.IO;
 
 namespace TurtleML.Layers
 {
-    public class DropOutLayer : ILayer
+    public sealed class DropOutLayer : ILayer
     {
         private readonly float dropOut;
-        private readonly ILayer inputLayer;
-        private Tensor outputs;
         private Random random;
 
         private DropOutLayer(float dropOut, ILayer inputLayer)
         {
             if (dropOut < float.Epsilon || dropOut > 1f)
+            {
                 throw new ArgumentOutOfRangeException(nameof(dropOut), "drop out must be between zero and one.");
+            }
 
             this.dropOut = dropOut;
-            this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
             var inputs = inputLayer.Outputs;
-            outputs = new Tensor(inputs.Dimensions);
+            Outputs = new Tensor(inputs.Dimensions);
         }
 
-        public Tensor Outputs => outputs;
+        public Tensor Outputs { get; }
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
@@ -32,14 +31,19 @@ namespace TurtleML.Layers
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            Debug.Assert(inputs.Length == outputs.Length, $"Your input array (size: {inputs.Length}) does not match the specified size of {outputs.Length}.");
+            Debug.Assert(inputs.Length == Outputs.Length, $"Your input array (size: {inputs.Length}) does not match the specified size of {Outputs.Length}.");
 
-            if (!training) return inputs;
+            if (!training)
+            {
+                return inputs;
+            }
 
-            for (int h = 0, count = outputs.Length; h < count; h++)
-                outputs[h] = random.NextDouble() >= dropOut ? inputs[h] : 0f;
+            for (int h = 0, count = Outputs.Length; h < count; h++)
+            {
+                Outputs[h] = random.NextDouble() >= dropOut ? inputs[h] : 0f;
+            }
 
-            return outputs;
+            return Outputs;
         }
 
         public void Dump(BinaryWriter writer)
