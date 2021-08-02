@@ -17,15 +17,17 @@ namespace TurtleML.Layers
         private readonly int filterHeight;
         private readonly int filterStride;
         private readonly int filterWidth;
+        private readonly IInitializer initializer;
         private readonly int inputDepth;
         private readonly ILayer inputLayer;
         private readonly float[] momentum;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
 
-        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, ILayer inputLayer)
+        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, ILayer inputLayer)
         {
-            this.activation = activation;
+            this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+            this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
             this.filterWidth = filterWidth;
             this.filterHeight = filterHeight;
             this.filterStride = filterStride;
@@ -169,15 +171,14 @@ namespace TurtleML.Layers
         public void Initialize(Random random)
         {
             var rnd = random ?? new Random();
-            var limit = 1f / (filterWidth * filterHeight);
+            var inputs = filterWidth * filterHeight;
+            var outputs = Outputs.Length;
             for (int f = 0, features = filterDepth; f < features; f++)
             {
                 for (int w = 0; w < weights[f].Length; w++)
-                {
-                    weights[f][w] = ((float)rnd.NextDouble() * (limit + limit)) - limit;
-                }
+                    weights[f][w] = initializer.Sample(inputs, outputs, rnd);
 
-                bias[f] = ((float)rnd.NextDouble() * (limit + limit)) - limit;
+                bias[f] = initializer.Sample(inputs, outputs, rnd);
             }
         }
 
@@ -201,6 +202,7 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private IActivationFunction activation;
+            private IInitializer initializer;
             private int filterCount;
             private int filterHeight;
             private int filterStride;
@@ -209,6 +211,13 @@ namespace TurtleML.Layers
             public Builder Activation(IActivationFunction activation)
             {
                 this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+
+                return this;
+            }
+
+            public Builder Initializer(IInitializer initializer)
+            {
+                this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
 
                 return this;
             }
@@ -225,7 +234,7 @@ namespace TurtleML.Layers
                     throw new InvalidOperationException("activation cannot be null");
                 }
 
-                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, inputLayer);
+                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer, inputLayer);
             }
 
             public Builder Filters(int width, int height, int stride, int count)

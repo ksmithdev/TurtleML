@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace TurtleML.Layers
 {
@@ -8,15 +9,17 @@ namespace TurtleML.Layers
     {
         private readonly IActivationFunction activation;
         private readonly float[] bias;
-        private readonly Tensor derivatives;
+        private readonly ThreadLocal<Tensor> buffers = new ThreadLocal<Tensor>();
+        private readonly IInitializer initializer;
         private readonly ILayer inputLayer;
         private readonly int inputSize;
         private readonly float[] momentum;
         private readonly int outputSize;
         private readonly Tensor signals;
+        private readonly Tensor derivatives;
         private readonly Tensor[] weights;
 
-        private FullyConnectedLayer(int outputSize, IActivationFunction activation, ILayer inputLayer)
+        private FullyConnectedLayer(int outputSize, IActivationFunction activation, IInitializer initializer, ILayer inputLayer)
         {
             if (outputSize < 1)
             {
@@ -25,6 +28,7 @@ namespace TurtleML.Layers
 
             this.outputSize = outputSize;
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+            this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
             this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
 
             var inputs = inputLayer.Outputs;
@@ -106,15 +110,13 @@ namespace TurtleML.Layers
         public void Initialize(Random random)
         {
             var rnd = random ?? new Random();
-            var limit = 1f / inputSize;
+
             for (int o = 0; o < outputSize; o++)
             {
                 for (int w = 0; w < inputSize; w++)
-                {
-                    weights[o][w] = ((float)rnd.NextDouble() * (limit + limit)) - limit;
-                }
+                    weights[o][w] = initializer.Sample(inputSize, outputSize, rnd);
 
-                bias[o] = ((float)rnd.NextDouble() * (limit + limit)) - limit;
+                bias[o] = initializer.Sample(inputSize, outputSize, rnd);
             }
         }
 
@@ -138,6 +140,7 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private IActivationFunction activation;
+            private IInitializer initializer;
             private int outputCount;
 
             public Builder Activation(IActivationFunction activation)
@@ -149,7 +152,14 @@ namespace TurtleML.Layers
 
             public ILayer Build(ILayer inputLayer)
             {
-                return new FullyConnectedLayer(outputCount, activation, inputLayer);
+                return new FullyConnectedLayer(outputCount, activation, initializer, inputLayer);
+            }
+
+            public Builder Initializer(IInitializer initializer)
+            {
+                this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+                return this;
             }
 
             public Builder Outputs(int outputCount)
