@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 
 namespace TurtleML.Layers
 {
@@ -9,14 +8,13 @@ namespace TurtleML.Layers
     {
         private readonly IActivationFunction activation;
         private readonly float[] bias;
-        private readonly ThreadLocal<Tensor> buffers = new ThreadLocal<Tensor>();
+        private readonly Tensor derivatives;
         private readonly ILayer inputLayer;
         private readonly int inputSize;
         private readonly float[] momentum;
         private readonly int outputSize;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
-        private readonly Tensor derivatives;
 
         private FullyConnectedLayer(int outputSize, IActivationFunction activation, ILayer inputLayer)
         {

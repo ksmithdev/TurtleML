@@ -17,10 +17,10 @@ namespace TurtleML
 
         public int Epoch { get; }
 
+        public float LearningRate { get; }
+
         public float TrainingError { get; }
 
         public float ValidationError { get; }
-
-        public float LearningRate { get; }
     }
 }

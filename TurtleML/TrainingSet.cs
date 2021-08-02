@@ -6,11 +6,12 @@ namespace TurtleML
 {
     public class TrainingSet : List<Tuple<Tensor, Tensor>>
     {
-        public TrainingSet(IEnumerable<Tuple<Tensor, Tensor>> collection) : base(collection)
+        public TrainingSet(IEnumerable<Tuple<Tensor, Tensor>> collection)
+            : base(collection)
         {
         }
 
-        public TrainingSet() : base()
+        public TrainingSet()
         {
         }
 

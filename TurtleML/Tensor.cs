@@ -7,14 +7,13 @@ namespace TurtleML
 {
     public class Tensor : IEnumerable<float>
     {
-        private readonly int height;
         private readonly float[] values;
 
         public Tensor(int width, int height, int depth)
         {
-            this.Width = width;
-            this.height = height;
-            this.Depth = depth;
+            Width = width;
+            Height = height;
+            Depth = depth;
 
             values = new float[width * height * depth];
         }
@@ -39,37 +38,25 @@ namespace TurtleML
             this.values = values;
 
             Width = values.Length;
-            height = 1;
+            Height = 1;
             Depth = 1;
         }
 
         public int Depth { get; }
 
-        public (int, int, int) Dimensions => (Width, height, Depth);
+        public (int, int, int) Dimensions => (Width, Height, Depth);
 
-        public int Height => height;
+        public int Height { get; }
 
         public int Length => values.Length;
 
         public int Width { get; }
 
-        public float this[int i]
-        {
-            get { return values[i]; }
-            set { values[i] = value; }
-        }
+        public ref float this[int i] => ref values[i];
 
-        public float this[int x, int y]
-        {
-            get { return this[IndexOf(x, y)]; }
-            set { this[IndexOf(x, y)] = value; }
-        }
+        public ref float this[int x, int y] => ref this[IndexOf(x, y)];
 
-        public float this[int x, int y, int z]
-        {
-            get { return this[IndexOf(x, y, z)]; }
-            set { this[IndexOf(x, y, z)] = value; }
-        }
+        public ref float this[int x, int y, int z] => ref this[IndexOf(x, y, z)];
 
         public static Tensor Add(Tensor tensor1, Tensor tensor2) => Add(tensor1, tensor2.values);
 
@@ -248,7 +235,7 @@ namespace TurtleML
 
         public IEnumerator<float> GetEnumerator()
         {
-            return (values as IEnumerable<float>).GetEnumerator();
+            return ((IEnumerable<float>)values).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -263,7 +250,7 @@ namespace TurtleML
 
         public int IndexOf(int x, int y, int z)
         {
-            return x + (y * Width) + (z * Width * height);
+            return x + (y * Width) + (z * Width * Height);
         }
 
         public void Load(Tensor source, int sourceOffset) => Load(source.values, sourceOffset);
