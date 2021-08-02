@@ -10,13 +10,13 @@ namespace TurtleML.Layers
         private readonly IActivationFunction activation;
         private readonly float[] bias;
         private readonly ThreadLocal<Tensor> buffers = new ThreadLocal<Tensor>();
+        private readonly Tensor derivatives;
         private readonly IInitializer initializer;
         private readonly ILayer inputLayer;
         private readonly int inputSize;
         private readonly float[] momentum;
         private readonly int outputSize;
         private readonly Tensor signals;
-        private readonly Tensor derivatives;
         private readonly Tensor[] weights;
 
         private FullyConnectedLayer(int outputSize, IActivationFunction activation, IInitializer initializer, ILayer inputLayer)

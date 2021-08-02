@@ -202,22 +202,15 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private IActivationFunction activation;
-            private IInitializer initializer;
             private int filterCount;
             private int filterHeight;
             private int filterStride;
             private int filterWidth;
+            private IInitializer initializer;
 
             public Builder Activation(IActivationFunction activation)
             {
                 this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
-
-                return this;
-            }
-
-            public Builder Initializer(IInitializer initializer)
-            {
-                this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
 
                 return this;
             }
@@ -243,6 +236,13 @@ namespace TurtleML.Layers
                 filterHeight = height;
                 filterStride = stride;
                 filterCount = count;
+
+                return this;
+            }
+
+            public Builder Initializer(IInitializer initializer)
+            {
+                this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
 
                 return this;
             }
