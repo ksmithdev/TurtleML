@@ -3,18 +3,18 @@ using System.IO;
 
 namespace TurtleML
 {
-    public class NeuralNetwork
+    public class InferenceNetwork
     {
         protected readonly ILayer[] Layers;
         protected readonly ILossFunction Loss;
 
-        protected NeuralNetwork(ILossFunction loss, ILayer[] layers)
+        protected InferenceNetwork(ILossFunction loss, ILayer[] layers)
         {
             Loss = loss;
             Layers = layers;
         }
 
-        public static NeuralNetwork Restore(string fileName)
+        public static InferenceNetwork Restore(string fileName)
         {
             using (var file = File.OpenRead(fileName))
             {
@@ -22,7 +22,7 @@ namespace TurtleML
             }
         }
 
-        public static NeuralNetwork Restore(Stream stream)
+        public static InferenceNetwork Restore(Stream stream)
         {
             using (var reader = new BinaryReader(stream))
             {
@@ -39,7 +39,10 @@ namespace TurtleML
                 }
 
                 var lossFunctionType = reader.ReadString();
-                var lossFunction = (ILossFunction)Activator.CreateInstance(Type.GetType(lossFunctionType));
+                if (!(Activator.CreateInstance(Type.GetType(lossFunctionType)) is ILossFunction lossFunction))
+                {
+                    throw new InvalidOperationException($"An invalid loss function \"{lossFunctionType}\" was specified.");
+                }
 
                 var layerCount = reader.ReadInt32();
                 var layerTypes = new string[layerCount];
@@ -52,7 +55,11 @@ namespace TurtleML
                 for (int i = 0; i < layerCount; i++)
                 {
                     var layerType = reader.ReadString();
-                    layers[i] = (ILayer)Activator.CreateInstance(Type.GetType(layerType));
+                    if (!(Activator.CreateInstance(Type.GetType(layerType)) is ILayer layer))
+                    {
+                        throw new InvalidOperationException($"An invalid layer \"{layerType}\" was specified.");
+                    }
+                    layers[i] = layer;
                 }
 
                 foreach (var layer in layers)
@@ -60,7 +67,7 @@ namespace TurtleML
                     layer.Restore(reader);
                 }
 
-                return new NeuralNetwork(lossFunction, layers);
+                return new InferenceNetwork(lossFunction, layers);
             }
         }
 
@@ -73,38 +80,6 @@ namespace TurtleML
             }
 
             return results;
-        }
-
-        public void Dump(string path)
-        {
-            using (var file = File.Create(path))
-            {
-                Dump(file);
-            }
-        }
-
-        public void Dump(Stream stream)
-        {
-            using (var writer = new BinaryWriter(stream))
-            {
-                // magic numbers
-                writer.Write(new char[] { 't', 'n', 'n' });
-                // file version
-                writer.Write(1);
-                // loss function
-                writer.Write(Loss.GetType().AssemblyQualifiedName);
-                // number of layers
-                writer.Write(Layers.Length);
-                foreach (var layer in Layers)
-                {
-                    writer.Write(layer.GetType().AssemblyQualifiedName);
-                }
-                // layer data dump
-                foreach (var layer in Layers)
-                {
-                    layer.Dump(writer);
-                }
-            }
         }
     }
 }

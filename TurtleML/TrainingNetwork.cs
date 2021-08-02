@@ -2,9 +2,10 @@
 {
     using System;
     using System.Diagnostics;
+    using System.IO;
     using TurtleML.Loss;
 
-    public sealed class TrainableNeuralNetwork : NeuralNetwork
+    public sealed class TrainingNetwork : InferenceNetwork
     {
         private readonly ILearningPolicy learningPolicy;
 
@@ -14,7 +15,7 @@
 
         private bool aborted;
 
-        private TrainableNeuralNetwork(float momentumRate, bool shuffle, ILearningPolicy learningPolicy, ILossFunction loss, ILayer[] layers)
+        private TrainingNetwork(float momentumRate, bool shuffle, ILearningPolicy learningPolicy, ILossFunction loss, ILayer[] layers)
             : base(loss, layers)
         {
             this.momentumRate = momentumRate;
@@ -27,6 +28,38 @@
         public void Abort()
         {
             aborted = true;
+        }
+
+        public void Dump(string path)
+        {
+            using (var file = File.Create(path))
+            {
+                Dump(file);
+            }
+        }
+
+        public void Dump(Stream stream)
+        {
+            using (var writer = new BinaryWriter(stream))
+            {
+                // magic numbers
+                writer.Write(new char[] { 't', 'n', 'n' });
+                // file version
+                writer.Write(1);
+                // loss function
+                writer.Write(Loss.GetType().AssemblyQualifiedName);
+                // number of layers
+                writer.Write(Layers.Length);
+                foreach (var layer in Layers)
+                {
+                    writer.Write(layer.GetType().AssemblyQualifiedName);
+                }
+                // layer data dump
+                foreach (var layer in Layers)
+                {
+                    layer.Dump(writer);
+                }
+            }
         }
 
         public void Fit(TrainingSet trainingSet, TrainingSet validationSet, int epochs)
@@ -157,7 +190,7 @@
             private Random seed;
             private bool shuffle;
 
-            public TrainableNeuralNetwork Build()
+            public TrainingNetwork Build()
             {
                 var layerCollection = new ILayer[layers.Length];
 
@@ -170,7 +203,7 @@
                     layerCollection[l] = inputLayer;
                 }
 
-                return new TrainableNeuralNetwork(momentumRate, shuffle, learningPolicy, loss, layerCollection);
+                return new TrainingNetwork(momentumRate, shuffle, learningPolicy, loss, layerCollection);
             }
 
             public Builder Layers(params ILayerBuilder[] layers)
