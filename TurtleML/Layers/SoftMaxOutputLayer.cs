@@ -5,17 +5,13 @@ namespace TurtleML.Layers
 {
     public sealed class SoftMaxOutputLayer : ILayer
     {
-        private SoftMaxOutputLayer(ILayer inputLayer)
+        private SoftMaxOutputLayer(IOutput input)
         {
-            InputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
-
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
             var inputSize = inputs.Length;
 
             Outputs = new Tensor(inputSize);
         }
-
-        public ILayer InputLayer { get; }
 
         public Tensor Outputs { get; }
 
@@ -67,9 +63,9 @@ namespace TurtleML.Layers
 
         public class Builder : ILayerBuilder
         {
-            public ILayer Build(ILayer inputLayer)
+            public ILayer Build(IOutput input)
             {
-                return new SoftMaxOutputLayer(inputLayer);
+                return new SoftMaxOutputLayer(input);
             }
         }
     }

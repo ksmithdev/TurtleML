@@ -5,12 +5,11 @@ namespace TurtleML.Layers
 {
     public sealed class InputLayer : ILayer
     {
-        private InputLayer(int width, int height, int depth)
+        private InputLayer()
         {
-            Outputs = new Tensor(width, height, depth);
         }
 
-        public Tensor Outputs { get; }
+        public Tensor Outputs { get; private set; }
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
@@ -26,6 +25,9 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Length);
+            writer.Write(Outputs.Depth);
         }
 
         public void Initialize(Random random)
@@ -34,6 +36,11 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
+            int width = reader.ReadInt32();
+            int length = reader.ReadInt32();
+            int depth = reader.ReadInt32();
+
+            Outputs = new Tensor((width, length, depth));
         }
 
         public class Builder : ILayerBuilder
@@ -42,9 +49,9 @@ namespace TurtleML.Layers
             private int height = 1;
             private int width = 1;
 
-            public ILayer Build(ILayer inputLayer)
+            public ILayer Build(IOutput input)
             {
-                return new InputLayer(width, height, depth);
+                return new InputLayer() { Outputs = new Tensor((width, height, depth)) };
             }
 
             public Builder Dimensions(int width, int height, int depth)
@@ -60,6 +67,13 @@ namespace TurtleML.Layers
             {
                 this.width = width;
                 this.height = height;
+
+                return this;
+            }
+
+            public Builder Dimensions(int length)
+            {
+                this.width = length;
 
                 return this;
             }

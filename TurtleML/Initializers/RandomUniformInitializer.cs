@@ -15,7 +15,7 @@ namespace TurtleML.Initializers
 
         public float Sample(int inputs, int outputs, Random random)
         {
-            return (float)random.NextDouble() * (max - min) + min;
+            return ((float)random.NextDouble() * (max - min)) + min;
         }
     }
 }

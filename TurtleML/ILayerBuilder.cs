@@ -2,6 +2,6 @@
 {
     public interface ILayerBuilder
     {
-        ILayer Build(ILayer inputLayer);
+        ILayer Build(IOutput input);
     }
 }

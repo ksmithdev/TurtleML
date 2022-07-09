@@ -3,10 +3,8 @@ using System.IO;
 
 namespace TurtleML
 {
-    public interface ILayer
+    public interface ILayer : IOutput
     {
-        Tensor Outputs { get; }
-
         Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate);
 
         Tensor CalculateOutputs(Tensor inputs, bool training = false);

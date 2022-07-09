@@ -11,7 +11,7 @@ namespace TurtleML.Activations
 
         public float Derivative(float value)
         {
-            return value * (1 - value);
+            return value * (1f - value);
         }
     }
 }

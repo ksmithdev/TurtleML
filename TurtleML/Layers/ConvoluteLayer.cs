@@ -18,13 +18,13 @@ namespace TurtleML.Layers
         private readonly int filterStride;
         private readonly int filterWidth;
         private readonly IInitializer initializer;
+        private readonly IOutput input;
         private readonly int inputDepth;
-        private readonly ILayer inputLayer;
         private readonly float[] momentum;
         private readonly Tensor signals;
         private readonly Tensor[] weights;
 
-        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, ILayer inputLayer)
+        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, IOutput inputLayer)
         {
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
             this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
@@ -32,7 +32,7 @@ namespace TurtleML.Layers
             this.filterHeight = filterHeight;
             this.filterStride = filterStride;
             this.filterDepth = filterDepth;
-            this.inputLayer = inputLayer;
+            this.input = inputLayer;
 
             var inputs = inputLayer.Outputs;
             int inputWidth = inputs.Width;
@@ -55,11 +55,11 @@ namespace TurtleML.Layers
             }
         }
 
-        public Tensor Outputs { get; }
+        public Tensor Outputs { get; private set; }
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
 
             signals.Clear();
 
@@ -80,11 +80,11 @@ namespace TurtleML.Layers
             //        {
             //        }
 
-            for (int f = 0; f < errors.Depth; f++)
+            for (int f = 0, depth = gradients.Depth; f < depth; f++)
             {
-                for (int y = 0; y < errors.Height; y++)
+                for (int y = 0, height = gradients.Height; y < height; y += filterStride)
                 {
-                    for (int x = 0; x < errors.Width; x++)
+                    for (int x = 0, width = gradients.Width; x < width; x += filterStride)
                     {
                         float gradient = gradients[x, y, f];
 
@@ -215,7 +215,7 @@ namespace TurtleML.Layers
                 return this;
             }
 
-            public ILayer Build(ILayer inputLayer)
+            public ILayer Build(IOutput input)
             {
                 if (filterWidth < 1 || filterHeight < 1 || filterStride < 1 || filterCount < 1)
                 {
@@ -227,7 +227,7 @@ namespace TurtleML.Layers
                     throw new InvalidOperationException("activation cannot be null");
                 }
 
-                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer, inputLayer);
+                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer, input);
             }
 
             public Builder Filters(int width, int height, int stride, int count)

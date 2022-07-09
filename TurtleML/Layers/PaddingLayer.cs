@@ -8,11 +8,11 @@ namespace TurtleML.Layers
         private readonly int padding;
         private readonly Tensor signals;
 
-        public PaddingLayer(int padding, ILayer inputLayer)
+        public PaddingLayer(int padding, IOutput input)
         {
             this.padding = padding;
 
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
             int width = inputs.Width + (padding * 2);
             int height = inputs.Height + (padding * 2);
             int depth = inputs.Depth;
@@ -75,7 +75,7 @@ namespace TurtleML.Layers
         {
             private int size;
 
-            public ILayer Build(ILayer inputLayer) => new PaddingLayer(size, inputLayer);
+            public ILayer Build(IOutput input) => new PaddingLayer(size, input);
 
             public Builder Padding(int size)
             {

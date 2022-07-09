@@ -10,7 +10,7 @@ namespace TurtleML.Layers
         private readonly Tensor signals;
         private readonly (int x, int y, int z)[,,] switches;
 
-        private MaxPoolingLayer(int sampleWidth, int sampleHeight, ILayer inputLayer)
+        private MaxPoolingLayer(int sampleWidth, int sampleHeight, IOutput input)
         {
             if (sampleWidth < 1)
             {
@@ -20,15 +20,15 @@ namespace TurtleML.Layers
             {
                 throw new ArgumentOutOfRangeException(nameof(sampleHeight), "sample height must be greater than zero");
             }
-            if (inputLayer == null)
+            if (input == null)
             {
-                throw new ArgumentNullException(nameof(inputLayer));
+                throw new ArgumentNullException(nameof(input));
             }
 
             this.sampleWidth = sampleWidth;
             this.sampleHeight = sampleHeight;
 
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
             (int inputWidth, int inputHeight, int inputDepth) = inputs.Dimensions;
 
             int outputWidth = (inputWidth + (inputWidth % sampleWidth)) / sampleWidth;
@@ -103,9 +103,9 @@ namespace TurtleML.Layers
             private int sampleHeight;
             private int sampleWidth;
 
-            public ILayer Build(ILayer inputLayer)
+            public ILayer Build(IOutput input)
             {
-                return new MaxPoolingLayer(sampleWidth, sampleHeight, inputLayer);
+                return new MaxPoolingLayer(sampleWidth, sampleHeight, input);
             }
 
             public Builder Sample(int width, int height)

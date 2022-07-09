@@ -3,6 +3,8 @@
     using System;
     using System.Diagnostics;
     using System.IO;
+    using TurtleML.Layers;
+    using TurtleML.LearningPolicies;
     using TurtleML.Loss;
 
     public sealed class TrainingNetwork : InferenceNetwork
@@ -108,55 +110,6 @@
             }
         }
 
-        public float Test(TrainingSet validationSet)
-        {
-            float sumCost = 0f;
-            for (int i = 0, count = validationSet.Count; i < count; i++)
-            {
-                var inputs = validationSet[i].Item1;
-                var expected = validationSet[i].Item2;
-
-                var actuals = CalculateOutputs(inputs);
-
-                sumCost += Loss.CalculateTotal(actuals, expected);
-            }
-
-            return sumCost / validationSet.Count;
-        }
-
-        public float Train(TrainingSet trainingSet, float learningRate)
-        {
-            if (shuffle)
-            {
-                trainingSet.Shuffle();
-            }
-
-            var lastLayer = Layers[Layers.Length - 1];
-            var outputs = lastLayer.Outputs;
-            var errors = new Tensor(outputs.Dimensions);
-
-            float sumCost = 0f;
-            for (int i = 0, count = trainingSet.Count; i < count; i++)
-            {
-                errors.Clear();
-
-                (var inputs, var expected) = trainingSet[i];
-
-                var actuals = CalculateTrainingOutputs(inputs);
-
-                sumCost += Loss.CalculateTotal(actuals, expected);
-
-                for (int o = 0; o < actuals.Length; o++)
-                {
-                    errors[o] = Loss.Derivative(actuals[o], expected[o]);
-                }
-
-                BackPropagate(errors, learningRate, momentumRate);
-            }
-
-            return sumCost / trainingSet.Count;
-        }
-
         private Tensor BackPropagate(Tensor errors, float learningRate, float momentum)
         {
             var signals = errors;
@@ -181,10 +134,60 @@
 
         private void RaiseTrainingProgress(int epoch, float trainingError, float validationError, float learningRate, long cycleTime) => TrainingProgress?.Invoke(this, new TrainingProgressEventArgs(epoch, trainingError, validationError, learningRate, cycleTime));
 
+        private float Test(TrainingSet validationSet)
+        {
+            float sumCost = 0f;
+            for (int i = 0, count = validationSet.Count; i < count; i++)
+            {
+                var inputs = validationSet[i].Item1;
+                var expected = validationSet[i].Item2;
+
+                var actuals = CalculateOutputs(inputs);
+
+                sumCost += Loss.CalculateTotal(actuals, expected);
+            }
+
+            return sumCost / validationSet.Count;
+        }
+
+        private float Train(TrainingSet trainingSet, float learningRate)
+        {
+            if (shuffle)
+            {
+                trainingSet.Shuffle();
+            }
+
+            var lastLayer = Layers[Layers.Length - 1];
+            var outputs = lastLayer.Outputs;
+            var errors = new Tensor(outputs.Dimensions);
+
+            float sumCost = 0f;
+            for (int i = 0, count = trainingSet.Count; i < count; i++)
+            {
+                errors.Clear();
+
+                (var inputs, var expected) = trainingSet[i];
+
+                var actuals = CalculateTrainingOutputs(inputs);
+
+                sumCost += Loss.CalculateTotal(actuals, expected);
+
+                for (int o = 0; o < actuals.Length; o++)
+                {
+                    errors[o] = expected[o] - actuals[o];
+                }
+
+                BackPropagate(errors, learningRate, momentumRate);
+            }
+
+            return sumCost / trainingSet.Count;
+        }
+
         public class Builder
         {
+            private (int width, int heigh, int depth) inputSize;
             private ILayerBuilder[] layers;
-            private ILearningPolicy learningPolicy;
+            private ILearningPolicy learningPolicy = new FixedLearningPolicy(0.01f);
             private ILossFunction loss = new MeanSquareError();
             private float momentumRate;
             private Random seed;
@@ -194,16 +197,26 @@
             {
                 var layerCollection = new ILayer[layers.Length];
 
-                ILayer inputLayer = null;
+                ILayer layer = new InputLayer.Builder()
+                    .Dimensions(inputSize.width, inputSize.heigh, inputSize.depth)
+                    .Build(null);
+
                 for (int l = 0; l < layers.Length; l++)
                 {
-                    inputLayer = layers[l].Build(inputLayer);
-                    inputLayer.Initialize(seed);
+                    layer = layers[l].Build(layer);
+                    layer.Initialize(seed);
 
-                    layerCollection[l] = inputLayer;
+                    layerCollection[l] = layer;
                 }
 
                 return new TrainingNetwork(momentumRate, shuffle, learningPolicy, loss, layerCollection);
+            }
+
+            public Builder InputShape(int width, int height, int depth)
+            {
+                inputSize = (width, height, depth);
+
+                return this;
             }
 
             public Builder Layers(params ILayerBuilder[] layers)
@@ -213,7 +226,7 @@
                 return this;
             }
 
-            public Builder LearningPolicy(ILearningPolicy learningPolicy, float momentumRate)
+            public Builder LearningPolicy(ILearningPolicy learningPolicy, float momentumRate = 0f)
             {
                 this.learningPolicy = learningPolicy;
                 this.momentumRate = momentumRate;

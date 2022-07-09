@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 
 namespace TurtleML.Layers
 {
@@ -9,17 +8,17 @@ namespace TurtleML.Layers
     {
         private readonly IActivationFunction activation;
         private readonly float[] bias;
-        private readonly ThreadLocal<Tensor> buffers = new ThreadLocal<Tensor>();
+        private readonly IInitializer biasInitializer;
         private readonly Tensor derivatives;
-        private readonly IInitializer initializer;
-        private readonly ILayer inputLayer;
+        private readonly IOutput input;
         private readonly int inputSize;
         private readonly float[] momentum;
         private readonly int outputSize;
         private readonly Tensor signals;
+        private readonly IInitializer weightInitializer;
         private readonly Tensor[] weights;
 
-        private FullyConnectedLayer(int outputSize, IActivationFunction activation, IInitializer initializer, ILayer inputLayer)
+        private FullyConnectedLayer(int outputSize, IActivationFunction activation, IInitializer weightInitializer, IInitializer biasInitializer, IOutput input)
         {
             if (outputSize < 1)
             {
@@ -28,10 +27,11 @@ namespace TurtleML.Layers
 
             this.outputSize = outputSize;
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
-            this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
-            this.inputLayer = inputLayer ?? throw new ArgumentNullException(nameof(inputLayer));
+            this.weightInitializer = weightInitializer ?? throw new ArgumentNullException(nameof(weightInitializer));
+            this.biasInitializer = biasInitializer ?? throw new ArgumentNullException(nameof(biasInitializer));
+            this.input = input ?? throw new ArgumentNullException(nameof(input));
 
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
             inputSize = inputs.Length;
 
             bias = new float[outputSize];
@@ -50,7 +50,7 @@ namespace TurtleML.Layers
 
         public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
         {
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
 
             signals.Clear();
 
@@ -114,9 +114,9 @@ namespace TurtleML.Layers
             for (int o = 0; o < outputSize; o++)
             {
                 for (int w = 0; w < inputSize; w++)
-                    weights[o][w] = initializer.Sample(inputSize, outputSize, rnd);
+                    weights[o][w] = weightInitializer.Sample(inputSize, outputSize, rnd);
 
-                bias[o] = initializer.Sample(inputSize, outputSize, rnd);
+                bias[o] = biasInitializer.Sample(inputSize, outputSize, rnd);
             }
         }
 
@@ -140,8 +140,9 @@ namespace TurtleML.Layers
         public class Builder : ILayerBuilder
         {
             private IActivationFunction activation;
-            private IInitializer initializer;
+            private IInitializer biasInitializer;
             private int outputCount;
+            private IInitializer weightInitializer;
 
             public Builder Activation(IActivationFunction activation)
             {
@@ -150,14 +151,15 @@ namespace TurtleML.Layers
                 return this;
             }
 
-            public ILayer Build(ILayer inputLayer)
+            public ILayer Build(IOutput input)
             {
-                return new FullyConnectedLayer(outputCount, activation, initializer, inputLayer);
+                return new FullyConnectedLayer(outputCount, activation, weightInitializer, biasInitializer, input);
             }
 
-            public Builder Initializer(IInitializer initializer)
+            public Builder Initializer(IInitializer weight, IInitializer bias = null)
             {
-                this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+                weightInitializer = weight ?? throw new ArgumentNullException(nameof(weight));
+                biasInitializer = bias ?? weight ?? throw new ArgumentNullException(nameof(bias));
 
                 return this;
             }

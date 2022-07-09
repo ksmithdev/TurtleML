@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace TurtleML
 {
@@ -42,15 +43,15 @@ namespace TurtleML
             Depth = 1;
         }
 
-        public int Depth { get; }
+        public int Depth { get; private set; }
 
         public (int, int, int) Dimensions => (Width, Height, Depth);
 
-        public int Height { get; }
+        public int Height { get; private set; }
 
         public int Length => values.Length;
 
-        public int Width { get; }
+        public int Width { get; private set; }
 
         public ref float this[int i] => ref values[i];
 
@@ -97,6 +98,11 @@ namespace TurtleML
             var tensor = new Tensor(array.Length);
             tensor.Load(array);
             return tensor;
+        }
+
+        public static Tensor Create(Tensor tensor)
+        {
+            return Create(tensor.values);
         }
 
         public static float Dot(Tensor tensor1, Tensor tensor2) => Dot(tensor1.values, tensor2.values);
@@ -243,11 +249,13 @@ namespace TurtleML
             return values.GetEnumerator();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf(int x, int y)
         {
             return x + (y * Width);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int IndexOf(int x, int y, int z)
         {
             return x + (y * Width) + (z * Width * Height);
@@ -282,5 +290,24 @@ namespace TurtleML
 
             return this;
         }
+
+        public Tensor Reshape(int width, int height, int depth)
+        {
+            Width = width;
+            Height = height;
+            Depth = depth;
+
+            return this;
+        }
+
+#if NETSTANDARD2_1_OR_GREATER
+        public static float Dot(Span<float> span1, Span<float> span2)
+        {
+            var vector1 = new Vector<float>(span1);
+            var vector2 = new Vector<float>(span2);
+
+            return Vector.Dot(vector1, vector2);
+        }
+#endif
     }
 }

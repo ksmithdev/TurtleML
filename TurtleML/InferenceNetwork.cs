@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace TurtleML
@@ -14,9 +15,11 @@ namespace TurtleML
             Layers = layers;
         }
 
-        public static InferenceNetwork Restore(string fileName)
+        public IEnumerable<ILayer> InternalLayers => Layers;
+
+        public static InferenceNetwork Restore(FileInfo fileInfo)
         {
-            using (var file = File.OpenRead(fileName))
+            using (var file = fileInfo.OpenRead())
             {
                 return Restore(file);
             }
@@ -27,7 +30,7 @@ namespace TurtleML
             using (var reader = new BinaryReader(stream))
             {
                 var magicNumber = reader.ReadChars(3);
-                if (magicNumber != new[] { 't', 'n', 'n' })
+                if (magicNumber[0] != 't' || magicNumber[1] != 'n' || magicNumber[2] != 'n')
                 {
                     throw new InvalidDataException("Source data is not a valid neural network dump.");
                 }
@@ -54,10 +57,9 @@ namespace TurtleML
                 var layers = new ILayer[layerCount];
                 for (int i = 0; i < layerCount; i++)
                 {
-                    var layerType = reader.ReadString();
-                    if (!(Activator.CreateInstance(Type.GetType(layerType)) is ILayer layer))
+                    if (!(Activator.CreateInstance(Type.GetType(layerTypes[i])) is ILayer layer))
                     {
-                        throw new InvalidOperationException($"An invalid layer \"{layerType}\" was specified.");
+                        throw new InvalidOperationException($"An invalid layer \"{layerTypes[i]}\" was specified.");
                     }
                     layers[i] = layer;
                 }
@@ -78,7 +80,6 @@ namespace TurtleML
             {
                 results = Layers[l].CalculateOutputs(results, training: false);
             }
-
             return results;
         }
     }

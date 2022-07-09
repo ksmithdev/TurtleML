@@ -9,7 +9,7 @@ namespace TurtleML.Layers
         private readonly float dropOut;
         private Random random;
 
-        private DropOutLayer(float dropOut, ILayer inputLayer)
+        private DropOutLayer(float dropOut, IOutput input)
         {
             if (dropOut < float.Epsilon || dropOut > 1f)
             {
@@ -18,7 +18,7 @@ namespace TurtleML.Layers
 
             this.dropOut = dropOut;
 
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
             Outputs = new Tensor(inputs.Dimensions);
         }
 
@@ -63,9 +63,9 @@ namespace TurtleML.Layers
         {
             private float dropOut;
 
-            public ILayer Build(ILayer inputLayer)
+            public ILayer Build(IOutput input)
             {
-                return new DropOutLayer(dropOut, inputLayer);
+                return new DropOutLayer(dropOut, input);
             }
 
             public Builder DropOut(float dropOut)
