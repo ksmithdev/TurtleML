@@ -1,22 +1,22 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace TurtleML.Layers
 {
     public sealed class FullyConnectedLayer : ILayer
     {
-        private readonly IActivationFunction activation;
-        private readonly float[] bias;
         private readonly IInitializer biasInitializer;
         private readonly Tensor derivatives;
-        private readonly IOutput input;
-        private readonly int inputSize;
         private readonly float[] momentum;
-        private readonly int outputSize;
         private readonly Tensor signals;
         private readonly IInitializer weightInitializer;
-        private readonly Tensor[] weights;
+        private IActivationFunction activation;
+        private float[] bias;
+        private int inputSize;
+        private int outputSize;
+        private Tensor[] weights;
 
         private FullyConnectedLayer(int outputSize, IActivationFunction activation, IInitializer weightInitializer, IInitializer biasInitializer, IOutput input)
         {
@@ -29,29 +29,27 @@ namespace TurtleML.Layers
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
             this.weightInitializer = weightInitializer ?? throw new ArgumentNullException(nameof(weightInitializer));
             this.biasInitializer = biasInitializer ?? throw new ArgumentNullException(nameof(biasInitializer));
-            this.input = input ?? throw new ArgumentNullException(nameof(input));
 
             var inputs = input.Outputs;
             inputSize = inputs.Length;
 
-            bias = new float[outputSize];
-            momentum = new float[outputSize];
             Outputs = new Tensor(outputSize);
-            derivatives = new Tensor(outputSize);
-            signals = new Tensor(inputs.Dimensions);
+
+            bias = new float[outputSize];
             weights = new Tensor[outputSize];
             for (int w = 0; w < outputSize; w++)
             {
                 weights[w] = new Tensor(inputSize);
             }
+            momentum = new float[outputSize];
+            derivatives = new Tensor(outputSize);
+            signals = new Tensor(inputs.Dimensions);
         }
 
-        public Tensor Outputs { get; }
+        public Tensor Outputs { get; private set; }
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
         {
-            var inputs = input.Outputs;
-
             signals.Clear();
 
             for (int d = 0, count = Outputs.Length; d < count; d++)
@@ -94,7 +92,15 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
-            writer.Write(inputSize * outputSize);
+            writer.Write(activation.GetType().AssemblyQualifiedName);
+            activation.Dump(writer);
+
+            writer.Write(inputSize);
+            writer.Write(outputSize);
+
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Height);
+            writer.Write(Outputs.Depth);
 
             for (int o = 0; o < outputSize; o++)
             {
@@ -122,9 +128,29 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
-            int count = reader.ReadInt32();
+            var activationType = reader.ReadString();
+            if (RuntimeHelpers.GetUninitializedObject(Type.GetType(activationType)) is not IActivationFunction activation)
+            {
+                throw new InvalidOperationException($"An invalid activation \"{activationType}\" was specified.");
+            }
+            this.activation = activation;
+            activation.Restore(reader);
 
-            Debug.Assert(count == inputSize * outputSize, $"Attempting to restore {nameof(FullyConnectedLayer)} with mismatched sizes.");
+            inputSize = reader.ReadInt32();
+            outputSize = reader.ReadInt32();
+
+            int outputWidth = reader.ReadInt32();
+            int outputHeight = reader.ReadInt32();
+            int outputDepth = reader.ReadInt32();
+
+            Outputs = new Tensor(outputWidth, outputHeight, outputDepth);
+
+            bias = new float[outputSize];
+            weights = new Tensor[outputSize];
+            for (int w = 0; w < outputSize; w++)
+            {
+                weights[w] = new Tensor(inputSize);
+            }
 
             for (int o = 0; o < outputSize; o++)
             {
@@ -139,10 +165,10 @@ namespace TurtleML.Layers
 
         public class Builder : ILayerBuilder
         {
-            private IActivationFunction activation;
-            private IInitializer biasInitializer;
+            private IActivationFunction? activation;
+            private IInitializer? biasInitializer;
             private int outputCount;
-            private IInitializer weightInitializer;
+            private IInitializer? weightInitializer;
 
             public Builder Activation(IActivationFunction activation)
             {
@@ -153,10 +179,14 @@ namespace TurtleML.Layers
 
             public ILayer Build(IOutput input)
             {
+                if (activation == null) throw new InvalidOperationException($"{nameof(activation)} cannot be null.");
+                if (weightInitializer == null) throw new InvalidOperationException($"{nameof(weightInitializer)} cannot be null.");
+                if (biasInitializer == null) throw new InvalidOperationException($"{nameof(biasInitializer)} cannot be null.");
+
                 return new FullyConnectedLayer(outputCount, activation, weightInitializer, biasInitializer, input);
             }
 
-            public Builder Initializer(IInitializer weight, IInitializer bias = null)
+            public Builder Initializer(IInitializer weight, IInitializer? bias = null)
             {
                 weightInitializer = weight ?? throw new ArgumentNullException(nameof(weight));
                 biasInitializer = bias ?? weight ?? throw new ArgumentNullException(nameof(bias));

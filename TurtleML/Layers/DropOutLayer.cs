@@ -7,7 +7,7 @@ namespace TurtleML.Layers
     public sealed class DropOutLayer : ILayer
     {
         private readonly float dropOut;
-        private Random random;
+        private Random? random;
 
         private DropOutLayer(float dropOut, IOutput input)
         {
@@ -22,9 +22,9 @@ namespace TurtleML.Layers
             Outputs = new Tensor(inputs.Dimensions);
         }
 
-        public Tensor Outputs { get; }
+        public Tensor Outputs { get; private set; }
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
         {
             return errors;
         }
@@ -40,7 +40,7 @@ namespace TurtleML.Layers
 
             for (int h = 0, count = Outputs.Length; h < count; h++)
             {
-                Outputs[h] = random.NextDouble() >= dropOut ? inputs[h] : 0f;
+                Outputs[h] = random?.NextDouble() >= dropOut ? inputs[h] : 0f;
             }
 
             return Outputs;
@@ -48,6 +48,9 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Height);
+            writer.Write(Outputs.Depth);
         }
 
         public void Initialize(Random random)
@@ -57,6 +60,10 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
+            int width = reader.ReadInt32();
+            int height = reader.ReadInt32();
+            int depth = reader.ReadInt32();
+            Outputs = new Tensor(width, height, depth);
         }
 
         public class Builder : ILayerBuilder

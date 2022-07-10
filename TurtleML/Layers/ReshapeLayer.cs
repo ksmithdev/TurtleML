@@ -3,22 +3,27 @@ using System.IO;
 
 namespace TurtleML.Layers
 {
-    public sealed class InputLayer : ILayer
+    public sealed class ReshapeLayer : ILayer
     {
-        private InputLayer()
+        private ReshapeLayer()
         {
         }
 
-        public Tensor Outputs { get; private set; }
+        public Tensor Outputs { get; private set; } = Tensor.Empty;
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Backpropagate(Tensor? inputs, Tensor errors, float learningRate, float momentumRate)
         {
             return errors;
         }
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            Outputs.Load(inputs);
+            if (inputs.Length != Outputs.Length)
+            {
+                throw new InvalidOperationException($"Input of shape ({inputs.Width},{inputs.Length},{inputs.Depth}) cannot be reshaped into ({Outputs.Width},{Outputs.Length},{Outputs.Depth})");
+            }
+
+            Outputs.Load(inputs.Reshape(Outputs.Width, Outputs.Length, Outputs.Depth));
 
             return Outputs;
         }
@@ -40,24 +45,24 @@ namespace TurtleML.Layers
             int length = reader.ReadInt32();
             int depth = reader.ReadInt32();
 
-            Outputs = new Tensor((width, length, depth));
+            Outputs = new Tensor(width, length, depth);
         }
 
         public class Builder : ILayerBuilder
         {
             private int depth = 1;
-            private int height = 1;
+            private int length = 1;
             private int width = 1;
 
             public ILayer Build(IOutput input)
             {
-                return new InputLayer() { Outputs = new Tensor((width, height, depth)) };
+                return new ReshapeLayer() { Outputs = new Tensor((width, length, depth)) };
             }
 
-            public Builder Dimensions(int width, int height, int depth)
+            public Builder Dimensions(int width, int length, int depth)
             {
                 this.width = width;
-                this.height = height;
+                this.length = length;
                 this.depth = depth;
 
                 return this;
@@ -66,7 +71,7 @@ namespace TurtleML.Layers
             public Builder Dimensions(int width, int height)
             {
                 this.width = width;
-                this.height = height;
+                this.length = height;
 
                 return this;
             }

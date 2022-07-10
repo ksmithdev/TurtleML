@@ -5,7 +5,7 @@ namespace TurtleML
 {
     public interface ILayer : IOutput
     {
-        Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate);
+        Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate);
 
         Tensor CalculateOutputs(Tensor inputs, bool training = false);
 

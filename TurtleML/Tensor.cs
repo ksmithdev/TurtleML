@@ -8,6 +8,7 @@ namespace TurtleML
 {
     public class Tensor : IEnumerable<float>
     {
+        public static readonly Tensor Empty = new(0);
         private readonly float[] values;
 
         public Tensor(int width, int height, int depth)

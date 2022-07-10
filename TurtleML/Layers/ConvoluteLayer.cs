@@ -1,30 +1,28 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
+using TurtleML.Initializers;
 
 namespace TurtleML.Layers
 {
     public sealed class ConvoluteLayer : ILayer
     {
-        private readonly IActivationFunction activation;
-        private readonly float[] bias;
-        private readonly ThreadLocal<Tensor> buffers = new ThreadLocal<Tensor>();
-        private readonly int featureHeight;
-        private readonly int featureSize;
-        private readonly int featureWidth;
-        private readonly int filterDepth;
-        private readonly int filterHeight;
-        private readonly int filterStride;
-        private readonly int filterWidth;
-        private readonly IInitializer initializer;
-        private readonly IOutput input;
-        private readonly int inputDepth;
         private readonly float[] momentum;
         private readonly Tensor signals;
-        private readonly Tensor[] weights;
+        private IActivationFunction activation;
+        private float[] bias;
+        private int featureHeight;
+        private int featureSize;
+        private int featureWidth;
+        private int filterDepth;
+        private int filterHeight;
+        private int filterStride;
+        private int filterWidth;
+        private IInitializer initializer;
+        private Tensor[] weights;
 
-        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, IOutput inputLayer)
+        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, IOutput input)
         {
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
             this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
@@ -32,12 +30,11 @@ namespace TurtleML.Layers
             this.filterHeight = filterHeight;
             this.filterStride = filterStride;
             this.filterDepth = filterDepth;
-            this.input = inputLayer;
 
-            var inputs = inputLayer.Outputs;
+            var inputs = input.Outputs;
             int inputWidth = inputs.Width;
             int inputHeight = inputs.Height;
-            inputDepth = inputs.Depth;
+            int inputDepth = inputs.Depth;
 
             featureWidth = ((inputWidth - filterWidth) / filterStride) + 1;
             featureHeight = ((inputHeight - filterHeight) / filterStride) + 1;
@@ -46,24 +43,22 @@ namespace TurtleML.Layers
             Outputs = new Tensor(featureWidth, featureHeight, filterDepth);
 
             bias = new float[filterDepth];
-            momentum = new float[filterDepth];
-            signals = new Tensor(inputWidth, inputHeight, inputDepth);
             weights = new Tensor[filterDepth];
             for (int f = 0; f < filterDepth; f++)
             {
                 weights[f] = new Tensor(filterWidth * filterHeight * inputDepth);
             }
+            momentum = new float[filterDepth];
+            signals = new Tensor(inputWidth, inputHeight, inputDepth);
         }
 
         public Tensor Outputs { get; private set; }
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
         {
-            var inputs = input.Outputs;
-
             signals.Clear();
 
-            var buffer = buffers.Value ?? (buffers.Value = new Tensor(filterWidth, filterHeight, inputDepth));
+            var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
 
             var derivatives = new Tensor(Outputs.Dimensions);
             for (int d = 0, count = Outputs.Length; d < count; d++)
@@ -90,7 +85,7 @@ namespace TurtleML.Layers
 
                         Tensor.Multiply(weights[f], gradient, buffer);
 
-                        for (int fz = 0; fz < inputDepth; fz++)
+                        for (int fz = 0; fz < inputs.Depth; fz++)
                         {
                             for (int fy = 0; fy < filterHeight; fy++)
                             {
@@ -123,13 +118,13 @@ namespace TurtleML.Layers
 
         public Tensor CalculateOutputs(Tensor inputs, bool training = false)
         {
-            var buffer = buffers.Value ?? (buffers.Value = new Tensor(filterWidth, filterHeight, inputDepth));
+            var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
 
             for (int x = 0; x < featureWidth; x++)
             {
                 for (int y = 0; y < featureHeight; y++)
                 {
-                    for (int fz = 0; fz < inputDepth; fz++)
+                    for (int fz = 0; fz < inputs.Depth; fz++)
                     {
                         for (int fy = 0; fy < filterHeight; fy++)
                         {
@@ -155,10 +150,26 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
-            writer.Write(weights.Length);
+            writer.Write(activation.GetType().AssemblyQualifiedName);
+            activation.Dump(writer);
+
+            writer.Write(filterWidth);
+            writer.Write(filterHeight);
+            writer.Write(filterDepth);
+            writer.Write(filterStride);
+
+            writer.Write(featureWidth);
+            writer.Write(featureHeight);
+            writer.Write(featureSize);
+
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Height);
+            writer.Write(Outputs.Depth);
 
             for (int f = 0; f < filterDepth; f++)
             {
+                writer.Write(weights[f].Length);
+
                 for (int w = 0; w < weights[f].Length; w++)
                 {
                     writer.Write(weights[f][w]);
@@ -184,12 +195,38 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
-            int count = reader.ReadInt32();
+            var activationType = reader.ReadString();
+            if (RuntimeHelpers.GetUninitializedObject(Type.GetType(activationType)) is not IActivationFunction activation)
+            {
+                throw new InvalidOperationException($"An invalid activation \"{activationType}\" was specified.");
+            }
+            this.activation = activation;
+            activation.Restore(reader);
 
-            Debug.Assert(count == filterDepth, $"Attempting to restore {nameof(ConvoluteLayer)} with mismatched sizes.");
+            filterWidth = reader.ReadInt32();
+            filterHeight = reader.ReadInt32();
+            filterDepth = reader.ReadInt32();
+            filterStride = reader.ReadInt32();
+
+            featureWidth = reader.ReadInt32();
+            featureHeight = reader.ReadInt32();
+            featureSize = reader.ReadInt32();
+
+            int outputWidth = reader.ReadInt32();
+            int outputHeight = reader.ReadInt32();
+            int outputDepth = reader.ReadInt32();
+
+            Outputs = new Tensor(outputWidth, outputHeight, outputDepth);
+
+            bias = new float[filterDepth];
+            weights = new Tensor[filterDepth];
 
             for (int f = 0; f < filterDepth; f++)
             {
+                int inputSize = reader.ReadInt32();
+
+                weights[f] = new Tensor(inputSize);
+
                 for (int w = 0; w < weights[f].Length; w++)
                 {
                     weights[f][w] = reader.ReadSingle();
@@ -201,12 +238,26 @@ namespace TurtleML.Layers
 
         public class Builder : ILayerBuilder
         {
-            private IActivationFunction activation;
+            private IActivationFunction? activation;
             private int filterCount;
             private int filterHeight;
             private int filterStride;
             private int filterWidth;
-            private IInitializer initializer;
+            private IInitializer? initializer;
+
+            public Builder()
+            {
+            }
+
+            public Builder(IActivationFunction activation, int filterWidth, int filterHeight, int filterStride, int filterCount, IInitializer? initializer = null)
+            {
+                this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+                this.filterWidth = filterWidth;
+                this.filterHeight = filterHeight;
+                this.filterStride = filterStride;
+                this.filterCount = filterCount;
+                this.initializer = initializer;
+            }
 
             public Builder Activation(IActivationFunction activation)
             {
@@ -227,7 +278,7 @@ namespace TurtleML.Layers
                     throw new InvalidOperationException("activation cannot be null");
                 }
 
-                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer, input);
+                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer ?? new HeInitializer(), input);
             }
 
             public Builder Filters(int width, int height, int stride, int count)

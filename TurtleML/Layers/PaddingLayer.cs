@@ -5,8 +5,8 @@ namespace TurtleML.Layers
 {
     public class PaddingLayer : ILayer
     {
-        private readonly int padding;
-        private readonly Tensor signals;
+        private readonly Tensor signals = Tensor.Empty;
+        private int padding;
 
         public PaddingLayer(int padding, IOutput input)
         {
@@ -21,9 +21,13 @@ namespace TurtleML.Layers
             signals = new Tensor(inputs.Dimensions);
         }
 
-        public Tensor Outputs { get; }
+        private PaddingLayer()
+        {
+        }
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Outputs { get; private set; } = Tensor.Empty;
+
+        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
         {
             int width = signals.Width;
             for (int z = 0, depth = signals.Depth; z < depth; z++)
@@ -61,6 +65,11 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
+            writer.Write(padding);
+
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Height);
+            writer.Write(Outputs.Depth);
         }
 
         public void Initialize(Random random)
@@ -69,6 +78,13 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
+            padding = reader.ReadInt32();
+
+            int width = reader.ReadInt32();
+            int height = reader.ReadInt32();
+            int depth = reader.ReadInt32();
+
+            Outputs = new Tensor(width, height, depth);
         }
 
         public class Builder : ILayerBuilder

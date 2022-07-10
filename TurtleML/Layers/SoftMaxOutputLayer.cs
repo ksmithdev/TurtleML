@@ -13,11 +13,9 @@ namespace TurtleML.Layers
             Outputs = new Tensor(inputSize);
         }
 
-        public Tensor Outputs { get; }
+        public Tensor Outputs { get; private set; } = Tensor.Empty;
 
-        public int OutputSize => Outputs.Length;
-
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
         {
             var signals = new Tensor(Outputs.Length);
 
@@ -51,6 +49,9 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Length);
+            writer.Write(Outputs.Depth);
         }
 
         public void Initialize(Random random)
@@ -59,6 +60,11 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
+            int width = reader.ReadInt32();
+            int length = reader.ReadInt32();
+            int depth = reader.ReadInt32();
+
+            Outputs = new Tensor(width, length, depth);
         }
 
         public class Builder : ILayerBuilder

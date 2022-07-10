@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace TurtleML.Activations
 {
@@ -12,6 +13,14 @@ namespace TurtleML.Activations
         public float Derivative(float value)
         {
             return value * (1f - value);
+        }
+
+        public void Dump(BinaryWriter writer)
+        {
+        }
+
+        public void Restore(BinaryReader reader)
+        {
         }
     }
 }

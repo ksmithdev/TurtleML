@@ -25,42 +25,34 @@
             this.learningPolicy = learningPolicy;
         }
 
-        public event EventHandler<TrainingProgressEventArgs> TrainingProgress;
+        public event EventHandler<TrainingProgressEventArgs>? TrainingProgress;
 
         public void Abort()
         {
             aborted = true;
         }
 
-        public void Dump(string path)
+        public void Dump(FileInfo outputFile)
         {
-            using (var file = File.Create(path))
-            {
-                Dump(file);
-            }
+            using var file = outputFile.Create();
+            Dump(file);
         }
 
         public void Dump(Stream stream)
         {
-            using (var writer = new BinaryWriter(stream))
+            using var writer = new BinaryWriter(stream);
+            // magic numbers
+            writer.Write(new char[] { 't', 'n', 'n' });
+            // file version
+            writer.Write(1);
+            // loss function
+            writer.Write(Loss.GetType().AssemblyQualifiedName);
+            // number of layers
+            writer.Write(Layers.Length);
+            foreach (var layer in Layers)
             {
-                // magic numbers
-                writer.Write(new char[] { 't', 'n', 'n' });
-                // file version
-                writer.Write(1);
-                // loss function
-                writer.Write(Loss.GetType().AssemblyQualifiedName);
-                // number of layers
-                writer.Write(Layers.Length);
-                foreach (var layer in Layers)
-                {
-                    writer.Write(layer.GetType().AssemblyQualifiedName);
-                }
-                // layer data dump
-                foreach (var layer in Layers)
-                {
-                    layer.Dump(writer);
-                }
+                writer.Write(layer.GetType().AssemblyQualifiedName);
+                layer.Dump(writer);
             }
         }
 
@@ -113,9 +105,12 @@
         private Tensor BackPropagate(Tensor errors, float learningRate, float momentum)
         {
             var signals = errors;
-            for (int l = Layers.Length - 1; l > -1; l--)
+
+            // layer 0 is always the input/reshape layer so skip it
+            for (int l = Layers.Length - 1; l > 0; l--)
             {
-                signals = Layers[l].Backpropagate(signals, learningRate, momentum);
+                Tensor inputs = Layers[l - 1].Outputs;
+                signals = Layers[l].Backpropagate(inputs, signals, learningRate, momentum);
             }
 
             return signals;
@@ -185,26 +180,26 @@
 
         public class Builder
         {
-            private (int width, int heigh, int depth) inputSize;
-            private ILayerBuilder[] layers;
+            private (int width, int length, int depth) inputSize;
+            private ILayerBuilder[] layers = new ILayerBuilder[0];
             private ILearningPolicy learningPolicy = new FixedLearningPolicy(0.01f);
             private ILossFunction loss = new MeanSquareError();
             private float momentumRate;
-            private Random seed;
+            private Random? seed;
             private bool shuffle;
 
             public TrainingNetwork Build()
             {
                 var layerCollection = new ILayer[layers.Length];
 
-                ILayer layer = new InputLayer.Builder()
-                    .Dimensions(inputSize.width, inputSize.heigh, inputSize.depth)
-                    .Build(null);
+                ILayer layer = new ReshapeLayer.Builder()
+                    .Dimensions(inputSize.width, inputSize.length, inputSize.depth)
+                    .Build(new NullOutput());
 
                 for (int l = 0; l < layers.Length; l++)
                 {
                     layer = layers[l].Build(layer);
-                    layer.Initialize(seed);
+                    layer.Initialize(seed ?? new Random());
 
                     layerCollection[l] = layer;
                 }
@@ -212,9 +207,9 @@
                 return new TrainingNetwork(momentumRate, shuffle, learningPolicy, loss, layerCollection);
             }
 
-            public Builder InputShape(int width, int height, int depth)
+            public Builder InputShape(int width, int length, int depth)
             {
-                inputSize = (width, height, depth);
+                inputSize = (width, length, depth);
 
                 return this;
             }
@@ -254,6 +249,11 @@
 
                 return this;
             }
+        }
+
+        private class NullOutput : IOutput
+        {
+            public Tensor Outputs { get; } = Tensor.Empty;
         }
     }
 }

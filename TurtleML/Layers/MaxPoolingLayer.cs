@@ -5,10 +5,14 @@ namespace TurtleML.Layers
 {
     public sealed class MaxPoolingLayer : ILayer
     {
-        private readonly int sampleHeight;
-        private readonly int sampleWidth;
-        private readonly Tensor signals;
-        private readonly (int x, int y, int z)[,,] switches;
+        private readonly Tensor signals = Tensor.Empty;
+        private int sampleHeight;
+        private int sampleWidth;
+        private (int x, int y, int z)[,,] switches = new (int, int, int)[0, 0, 0];
+
+        private MaxPoolingLayer()
+        {
+        }
 
         private MaxPoolingLayer(int sampleWidth, int sampleHeight, IOutput input)
         {
@@ -39,9 +43,9 @@ namespace TurtleML.Layers
             switches = new (int, int, int)[outputWidth, outputHeight, inputDepth];
         }
 
-        public Tensor Outputs { get; }
+        public Tensor Outputs { get; private set; } = Tensor.Empty;
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
+        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
         {
             signals.Clear();
 
@@ -88,6 +92,16 @@ namespace TurtleML.Layers
 
         public void Dump(BinaryWriter writer)
         {
+            writer.Write(sampleWidth);
+            writer.Write(sampleHeight);
+
+            writer.Write(Outputs.Width);
+            writer.Write(Outputs.Height);
+            writer.Write(Outputs.Depth);
+
+            writer.Write(switches.GetLength(0));
+            writer.Write(switches.GetLength(1));
+            writer.Write(switches.GetLength(2));
         }
 
         public void Initialize(Random random)
@@ -96,6 +110,20 @@ namespace TurtleML.Layers
 
         public void Restore(BinaryReader reader)
         {
+            sampleWidth = reader.ReadInt32();
+            sampleHeight = reader.ReadInt32();
+
+            int width = reader.ReadInt32();
+            int height = reader.ReadInt32();
+            int depth = reader.ReadInt32();
+
+            Outputs = new Tensor(width, height, depth);
+
+            int switchWidth = reader.ReadInt32();
+            int switchHeight = reader.ReadInt32();
+            int switchDepth = reader.ReadInt32();
+
+            switches = new (int, int, int)[switchWidth, switchHeight, switchDepth];
         }
 
         public class Builder : ILayerBuilder
