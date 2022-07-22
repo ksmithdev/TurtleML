@@ -1,34 +1,33 @@
-﻿namespace TurtleML.Activations
+﻿namespace TurtleML.Activations;
+
+using System.IO;
+
+public class LeakyReLUActivation : IActivationFunction
 {
-    using System.IO;
+    private float leak;
 
-    public class LeakyReLUActivation : IActivationFunction
+    public LeakyReLUActivation(float leak = 0.01f)
     {
-        private float leak;
+        this.leak = leak;
+    }
 
-        public LeakyReLUActivation(float leak = 0.01f)
-        {
-            this.leak = leak;
-        }
+    public float Activate(float value)
+    {
+        return value > 0f ? value : leak * value;
+    }
 
-        public float Activate(float value)
-        {
-            return value > 0f ? value : leak * value;
-        }
+    public float Derivative(float value)
+    {
+        return value >= 0f ? 1f : leak;
+    }
 
-        public float Derivative(float value)
-        {
-            return value >= 0f ? 1f : leak;
-        }
+    public void Dump(BinaryWriter writer)
+    {
+        writer.Write(leak);
+    }
 
-        public void Dump(BinaryWriter writer)
-        {
-            writer.Write(leak);
-        }
-
-        public void Restore(BinaryReader reader)
-        {
-            leak = reader.ReadSingle();
-        }
+    public void Restore(BinaryReader reader)
+    {
+        leak = reader.ReadSingle();
     }
 }

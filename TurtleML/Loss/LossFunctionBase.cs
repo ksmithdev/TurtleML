@@ -1,18 +1,17 @@
-﻿namespace TurtleML.Loss
+﻿namespace TurtleML.Loss;
+
+public abstract class LossFunctionBase : ILossFunction
 {
-    public abstract class LossFunctionBase : ILossFunction
+    public abstract float Calculate(float actual, float expected);
+
+    public float CalculateTotal(Tensor actuals, Tensor expected)
     {
-        public abstract float Calculate(float actual, float expected);
-
-        public float CalculateTotal(Tensor actuals, Tensor expected)
+        float sumErrorCost = 0f;
+        for (int o = 0; o < actuals.Length; o++)
         {
-            float sumErrorCost = 0f;
-            for (int o = 0; o < actuals.Length; o++)
-            {
-                sumErrorCost += Calculate(actuals[o], expected[o]);
-            }
-
-            return sumErrorCost;
+            sumErrorCost += Calculate(actuals[o], expected[o]);
         }
+
+        return sumErrorCost;
     }
 }

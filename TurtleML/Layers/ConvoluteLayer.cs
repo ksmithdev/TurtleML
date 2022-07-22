@@ -1,302 +1,304 @@
-﻿using System;
+﻿namespace TurtleML.Layers;
+
+using System;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using TurtleML.Initializers;
 
-namespace TurtleML.Layers
+public sealed class ConvoluteLayer : ILayer
 {
-    public sealed class ConvoluteLayer : ILayer
+    private readonly float[] momentum;
+    private readonly Tensor signals;
+    private IActivationFunction activation;
+    private float[] bias;
+    private int featureHeight;
+    private int featureSize;
+    private int featureWidth;
+    private int filterDepth;
+    private int filterHeight;
+    private int filterStride;
+    private int filterWidth;
+    private IInitializer initializer;
+    private Tensor[] weights;
+
+    private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, IOutput input)
     {
-        private readonly float[] momentum;
-        private readonly Tensor signals;
-        private IActivationFunction activation;
-        private float[] bias;
-        private int featureHeight;
-        private int featureSize;
-        private int featureWidth;
-        private int filterDepth;
-        private int filterHeight;
-        private int filterStride;
-        private int filterWidth;
-        private IInitializer initializer;
-        private Tensor[] weights;
+        this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+        this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+        this.filterWidth = filterWidth;
+        this.filterHeight = filterHeight;
+        this.filterStride = filterStride;
+        this.filterDepth = filterDepth;
 
-        private ConvoluteLayer(int filterWidth, int filterHeight, int filterStride, int filterDepth, IActivationFunction activation, IInitializer initializer, IOutput input)
+        var inputs = input.Outputs;
+        int inputWidth = inputs.Width;
+        int inputHeight = inputs.Height;
+        int inputDepth = inputs.Depth;
+
+        featureWidth = ((inputWidth - filterWidth) / filterStride) + 1;
+        featureHeight = ((inputHeight - filterHeight) / filterStride) + 1;
+        featureSize = featureWidth * featureHeight;
+
+        Outputs = new Tensor(featureWidth, featureHeight, filterDepth);
+
+        bias = new float[filterDepth];
+        weights = new Tensor[filterDepth];
+        for (int f = 0; f < filterDepth; f++)
         {
-            this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
-            this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
-            this.filterWidth = filterWidth;
-            this.filterHeight = filterHeight;
-            this.filterStride = filterStride;
-            this.filterDepth = filterDepth;
-
-            var inputs = input.Outputs;
-            int inputWidth = inputs.Width;
-            int inputHeight = inputs.Height;
-            int inputDepth = inputs.Depth;
-
-            featureWidth = ((inputWidth - filterWidth) / filterStride) + 1;
-            featureHeight = ((inputHeight - filterHeight) / filterStride) + 1;
-            featureSize = featureWidth * featureHeight;
-
-            Outputs = new Tensor(featureWidth, featureHeight, filterDepth);
-
-            bias = new float[filterDepth];
-            weights = new Tensor[filterDepth];
-            for (int f = 0; f < filterDepth; f++)
-            {
-                weights[f] = new Tensor(filterWidth * filterHeight * inputDepth);
-            }
-            momentum = new float[filterDepth];
-            signals = new Tensor(inputWidth, inputHeight, inputDepth);
+            weights[f] = new Tensor(filterWidth * filterHeight * inputDepth);
         }
 
-        public Tensor Outputs { get; private set; }
+        momentum = new float[filterDepth];
+        signals = new Tensor(inputWidth, inputHeight, inputDepth);
+    }
 
-        public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
+    public Tensor Outputs { get; private set; }
+
+    public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
+    {
+        signals.Clear();
+
+        var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
+
+        var derivatives = new Tensor(Outputs.Dimensions);
+        for (int d = 0, count = Outputs.Length; d < count; d++)
         {
-            signals.Clear();
-
-            var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
-
-            var derivatives = new Tensor(Outputs.Dimensions);
-            for (int d = 0, count = Outputs.Length; d < count; d++)
-            {
-                derivatives[d] = activation.Derivative(Outputs[d]);
-            }
-
-            var gradients = derivatives.Multiply(errors);
-
-            // TODO: some way to speed up signal calculations? this is the slowest part of the whole system right now
-            //for (int f = 0; f < signals.Depth; f++)
-            //    for (int y = 0; y < signals.Height; y++)
-            //        for (int x = 0; x < signals.Width; x++)
-            //        {
-            //        }
-
-            for (int f = 0, depth = gradients.Depth; f < depth; f++)
-            {
-                for (int y = 0, height = gradients.Height; y < height; y += filterStride)
-                {
-                    for (int x = 0, width = gradients.Width; x < width; x += filterStride)
-                    {
-                        float gradient = gradients[x, y, f];
-
-                        Tensor.Multiply(weights[f], gradient, buffer);
-
-                        for (int fz = 0; fz < inputs.Depth; fz++)
-                        {
-                            for (int fy = 0; fy < filterHeight; fy++)
-                            {
-                                for (int fx = 0; fx < filterWidth; fx++)
-                                {
-                                    int bufferIndex = buffer.IndexOf(fx, fy, fz);
-                                    int inputIndex = inputs.IndexOf(x + fx, y + fy, fz);
-
-                                    signals[inputIndex] += buffer[bufferIndex];
-
-                                    buffer[bufferIndex] = inputs[inputIndex];
-                                }
-                            }
-                        }
-
-                        float delta = gradient * learningRate;
-                        float force = (momentumRate * momentum[f]) + delta;
-
-                        momentum[f] = delta;
-
-                        weights[f].Add(buffer.Multiply(force));
-
-                        bias[f] += force;
-                    }
-                }
-            }
-
-            return signals;
+            derivatives[d] = activation.Derivative(Outputs[d]);
         }
 
-        public Tensor CalculateOutputs(Tensor inputs, bool training = false)
-        {
-            var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
+        var gradients = derivatives.Multiply(errors);
 
-            for (int x = 0; x < featureWidth; x++)
+    /*
+     * TODO: some way to speed up signal calculations ? this is the slowest part of the whole system right now
+     * for (int f = 0; f < signals.Depth; f++)
+     *     for (int y = 0; y < signals.Height; y++)
+     *         for (int x = 0; x < signals.Width; x++)
+     *         {
+     *         }
+    */
+
+        for (int f = 0, depth = gradients.Depth; f < depth; f++)
+        {
+            for (int y = 0, height = gradients.Height; y < height; y += filterStride)
             {
-                for (int y = 0; y < featureHeight; y++)
+                for (int x = 0, width = gradients.Width; x < width; x += filterStride)
                 {
+                    float gradient = gradients[x, y, f];
+
+                    Tensor.Multiply(weights[f], gradient, buffer);
+
                     for (int fz = 0; fz < inputs.Depth; fz++)
                     {
                         for (int fy = 0; fy < filterHeight; fy++)
                         {
                             for (int fx = 0; fx < filterWidth; fx++)
                             {
-                                int inputIndex = inputs.IndexOf(x + fx, y + fy, fz);
                                 int bufferIndex = buffer.IndexOf(fx, fy, fz);
+                                int inputIndex = inputs.IndexOf(x + fx, y + fy, fz);
+
+                                signals[inputIndex] += buffer[bufferIndex];
 
                                 buffer[bufferIndex] = inputs[inputIndex];
                             }
                         }
                     }
 
-                    for (int f = 0; f < filterDepth; f++)
+                    float delta = gradient * learningRate;
+                    float force = (momentumRate * momentum[f]) + delta;
+
+                    momentum[f] = delta;
+
+                    weights[f].Add(buffer.Multiply(force));
+
+                    bias[f] += force;
+                }
+            }
+        }
+
+        return signals;
+    }
+
+    public Tensor CalculateOutputs(Tensor inputs, bool training = false)
+    {
+        var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
+
+        for (int x = 0; x < featureWidth; x++)
+        {
+            for (int y = 0; y < featureHeight; y++)
+            {
+                for (int fz = 0; fz < inputs.Depth; fz++)
+                {
+                    for (int fy = 0; fy < filterHeight; fy++)
                     {
-                        Outputs[x, y, f] = activation.Activate(Tensor.Dot(buffer, weights[f]) + bias[f]);
+                        for (int fx = 0; fx < filterWidth; fx++)
+                        {
+                            int inputIndex = inputs.IndexOf(x + fx, y + fy, fz);
+                            int bufferIndex = buffer.IndexOf(fx, fy, fz);
+
+                            buffer[bufferIndex] = inputs[inputIndex];
+                        }
                     }
                 }
-            }
 
-            return Outputs;
-        }
-
-        public void Dump(BinaryWriter writer)
-        {
-            writer.Write(activation.GetType().AssemblyQualifiedName);
-            activation.Dump(writer);
-
-            writer.Write(filterWidth);
-            writer.Write(filterHeight);
-            writer.Write(filterDepth);
-            writer.Write(filterStride);
-
-            writer.Write(featureWidth);
-            writer.Write(featureHeight);
-            writer.Write(featureSize);
-
-            writer.Write(Outputs.Width);
-            writer.Write(Outputs.Height);
-            writer.Write(Outputs.Depth);
-
-            for (int f = 0; f < filterDepth; f++)
-            {
-                writer.Write(weights[f].Length);
-
-                for (int w = 0; w < weights[f].Length; w++)
+                for (int f = 0; f < filterDepth; f++)
                 {
-                    writer.Write(weights[f][w]);
+                    Outputs[x, y, f] = activation.Activate(Tensor.Dot(buffer, weights[f]) + bias[f]);
                 }
-
-                writer.Write(bias[f]);
             }
         }
 
-        public void Initialize(Random random)
-        {
-            var rnd = random ?? new Random();
-            var inputs = filterWidth * filterHeight;
-            var outputs = Outputs.Length;
-            for (int f = 0, features = filterDepth; f < features; f++)
-            {
-                for (int w = 0; w < weights[f].Length; w++)
-                    weights[f][w] = initializer.Sample(inputs, outputs, rnd);
+        return Outputs;
+    }
 
-                bias[f] = initializer.Sample(inputs, outputs, rnd);
+    public void Dump(BinaryWriter writer)
+    {
+        writer.Write(activation.GetType().AssemblyQualifiedName);
+        activation.Dump(writer);
+
+        writer.Write(filterWidth);
+        writer.Write(filterHeight);
+        writer.Write(filterDepth);
+        writer.Write(filterStride);
+
+        writer.Write(featureWidth);
+        writer.Write(featureHeight);
+        writer.Write(featureSize);
+
+        writer.Write(Outputs.Width);
+        writer.Write(Outputs.Height);
+        writer.Write(Outputs.Depth);
+
+        for (int f = 0; f < filterDepth; f++)
+        {
+            writer.Write(weights[f].Length);
+
+            for (int w = 0; w < weights[f].Length; w++)
+            {
+                writer.Write(weights[f][w]);
             }
+
+            writer.Write(bias[f]);
+        }
+    }
+
+    public void Initialize(Random random)
+    {
+        var rnd = random ?? new Random();
+        var inputs = filterWidth * filterHeight;
+        var outputs = Outputs.Length;
+        for (int f = 0, features = filterDepth; f < features; f++)
+        {
+            for (int w = 0; w < weights[f].Length; w++)
+                weights[f][w] = initializer.Sample(inputs, outputs, rnd);
+
+            bias[f] = initializer.Sample(inputs, outputs, rnd);
+        }
+    }
+
+    public void Restore(BinaryReader reader)
+    {
+        var activationType = reader.ReadString();
+        if (RuntimeHelpers.GetUninitializedObject(Type.GetType(activationType)) is not IActivationFunction activation)
+        {
+            throw new InvalidOperationException($"An invalid activation \"{activationType}\" was specified.");
         }
 
-        public void Restore(BinaryReader reader)
+        this.activation = activation;
+        activation.Restore(reader);
+
+        filterWidth = reader.ReadInt32();
+        filterHeight = reader.ReadInt32();
+        filterDepth = reader.ReadInt32();
+        filterStride = reader.ReadInt32();
+
+        featureWidth = reader.ReadInt32();
+        featureHeight = reader.ReadInt32();
+        featureSize = reader.ReadInt32();
+
+        int outputWidth = reader.ReadInt32();
+        int outputHeight = reader.ReadInt32();
+        int outputDepth = reader.ReadInt32();
+
+        Outputs = new Tensor(outputWidth, outputHeight, outputDepth);
+
+        bias = new float[filterDepth];
+        weights = new Tensor[filterDepth];
+
+        for (int f = 0; f < filterDepth; f++)
         {
-            var activationType = reader.ReadString();
-            if (RuntimeHelpers.GetUninitializedObject(Type.GetType(activationType)) is not IActivationFunction activation)
+            int inputSize = reader.ReadInt32();
+
+            weights[f] = new Tensor(inputSize);
+
+            for (int w = 0; w < weights[f].Length; w++)
             {
-                throw new InvalidOperationException($"An invalid activation \"{activationType}\" was specified.");
+                weights[f][w] = reader.ReadSingle();
             }
-            this.activation = activation;
-            activation.Restore(reader);
 
-            filterWidth = reader.ReadInt32();
-            filterHeight = reader.ReadInt32();
-            filterDepth = reader.ReadInt32();
-            filterStride = reader.ReadInt32();
+            bias[f] = reader.ReadSingle();
+        }
+    }
 
-            featureWidth = reader.ReadInt32();
-            featureHeight = reader.ReadInt32();
-            featureSize = reader.ReadInt32();
+    public class Builder : ILayerBuilder
+    {
+        private IActivationFunction? activation;
+        private int filterCount;
+        private int filterHeight;
+        private int filterStride;
+        private int filterWidth;
+        private IInitializer? initializer;
 
-            int outputWidth = reader.ReadInt32();
-            int outputHeight = reader.ReadInt32();
-            int outputDepth = reader.ReadInt32();
-
-            Outputs = new Tensor(outputWidth, outputHeight, outputDepth);
-
-            bias = new float[filterDepth];
-            weights = new Tensor[filterDepth];
-
-            for (int f = 0; f < filterDepth; f++)
-            {
-                int inputSize = reader.ReadInt32();
-
-                weights[f] = new Tensor(inputSize);
-
-                for (int w = 0; w < weights[f].Length; w++)
-                {
-                    weights[f][w] = reader.ReadSingle();
-                }
-
-                bias[f] = reader.ReadSingle();
-            }
+        public Builder()
+        {
         }
 
-        public class Builder : ILayerBuilder
+        public Builder(IActivationFunction activation, int filterWidth, int filterHeight, int filterStride, int filterCount, IInitializer? initializer = null)
         {
-            private IActivationFunction? activation;
-            private int filterCount;
-            private int filterHeight;
-            private int filterStride;
-            private int filterWidth;
-            private IInitializer? initializer;
+            this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+            this.filterWidth = filterWidth;
+            this.filterHeight = filterHeight;
+            this.filterStride = filterStride;
+            this.filterCount = filterCount;
+            this.initializer = initializer;
+        }
 
-            public Builder()
+        public Builder Activation(IActivationFunction activation)
+        {
+            this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+
+            return this;
+        }
+
+        public ILayer Build(IOutput input)
+        {
+            if (filterWidth < 1 || filterHeight < 1 || filterStride < 1 || filterCount < 1)
             {
+                throw new InvalidOperationException("filter size, stride, and count must be greater than zero");
             }
 
-            public Builder(IActivationFunction activation, int filterWidth, int filterHeight, int filterStride, int filterCount, IInitializer? initializer = null)
+            if (activation == null)
             {
-                this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
-                this.filterWidth = filterWidth;
-                this.filterHeight = filterHeight;
-                this.filterStride = filterStride;
-                this.filterCount = filterCount;
-                this.initializer = initializer;
+                throw new InvalidOperationException("activation cannot be null");
             }
 
-            public Builder Activation(IActivationFunction activation)
-            {
-                this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
+            return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer ?? new HeInitializer(), input);
+        }
 
-                return this;
-            }
+        public Builder Filters(int width, int height, int stride, int count)
+        {
+            filterWidth = width;
+            filterHeight = height;
+            filterStride = stride;
+            filterCount = count;
 
-            public ILayer Build(IOutput input)
-            {
-                if (filterWidth < 1 || filterHeight < 1 || filterStride < 1 || filterCount < 1)
-                {
-                    throw new InvalidOperationException("filter size, stride, and count must be greater than zero");
-                }
+            return this;
+        }
 
-                if (activation == null)
-                {
-                    throw new InvalidOperationException("activation cannot be null");
-                }
+        public Builder Initializer(IInitializer initializer)
+        {
+            this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
 
-                return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer ?? new HeInitializer(), input);
-            }
-
-            public Builder Filters(int width, int height, int stride, int count)
-            {
-                filterWidth = width;
-                filterHeight = height;
-                filterStride = stride;
-                filterCount = count;
-
-                return this;
-            }
-
-            public Builder Initializer(IInitializer initializer)
-            {
-                this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
-
-                return this;
-            }
+            return this;
         }
     }
 }

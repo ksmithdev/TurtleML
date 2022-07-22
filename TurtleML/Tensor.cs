@@ -1,314 +1,358 @@
-﻿using System;
+﻿namespace TurtleML;
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace TurtleML
+/// <summary>
+/// Represents a tensor of values for data processing.
+/// </summary>
+public class Tensor : IEnumerable<float>
 {
-    public class Tensor : IEnumerable<float>
+    /// <summary>
+    /// An empty tensor.
+    /// </summary>
+    public static readonly Tensor Empty = new(0);
+
+    private readonly float[] values;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Tensor"/> class.
+    /// </summary>
+    /// <param name="width">The tensor width.</param>
+    /// <param name="height">The tensor height.</param>
+    /// <param name="depth">The tensor depth.</param>
+    public Tensor(int width, int height, int depth)
     {
-        public static readonly Tensor Empty = new(0);
-        private readonly float[] values;
+        Width = width;
+        Height = height;
+        Depth = depth;
 
-        public Tensor(int width, int height, int depth)
+        values = new float[width * height * depth];
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Tensor"/> class.
+    /// </summary>
+    /// <param name="size">The size of the tensor in width,height,depth format.</param>
+    public Tensor((int width, int height, int depth) size)
+        : this(size.width, size.height, size.depth)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Tensor"/> class.
+    /// </summary>
+    /// <param name="length">The tensor length.</param>
+    public Tensor(int length)
+        : this(length, 1, 1)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Tensor"/> class.
+    /// </summary>
+    /// <param name="width">The tensor width.</param>
+    /// <param name="height">The tensor height.</param>
+    public Tensor(int width, int height)
+        : this(width, height, 1)
+    {
+    }
+
+    private Tensor(float[] values)
+    {
+        this.values = values;
+
+        Width = values.Length;
+        Height = 1;
+        Depth = 1;
+    }
+
+    /// <summary>
+    /// Gets the tensor depth.
+    /// </summary>
+    public int Depth { get; private set; }
+
+    /// <summary>
+    /// Gets the tensor dimensions in width,height,depth format.
+    /// </summary>
+    public (int, int, int) Dimensions => (Width, Height, Depth);
+
+    /// <summary>
+    /// Gets the tensor height.
+    /// </summary>
+    public int Height { get; private set; }
+
+    /// <summary>
+    /// Gets the tensor total length.
+    /// </summary>
+    public int Length => values.Length;
+
+    /// <summary>
+    /// Gets the tensor width.
+    /// </summary>
+    public int Width { get; private set; }
+
+    public ref float this[int i] => ref values[i];
+
+    public ref float this[int x, int y] => ref this[IndexOf(x, y)];
+
+    public ref float this[int x, int y, int z] => ref this[IndexOf(x, y, z)];
+
+    /// <summary>
+    /// Add the supplied tensors together and return the result.
+    /// </summary>
+    /// <param name="tensor1">The first tensor to add.</param>
+    /// <param name="tensor2">The second tensor to add.</param>
+    /// <returns>A new tensor sum of the supplied values.</returns>
+    public static Tensor Add(Tensor tensor1, Tensor tensor2) => Add(tensor1, tensor2.values);
+
+    public static Tensor Add(Tensor tensor, float[] array)
+    {
+        var result = new Tensor(tensor.Dimensions);
+
+        int i = 0,
+            step = Vector<float>.Count,
+            count = tensor.Length;
+
+        for (; i < count - step; i += step)
         {
-            Width = width;
-            Height = height;
-            Depth = depth;
+            var vector1 = new Vector<float>(tensor.values, i);
+            var vector2 = new Vector<float>(array, i);
 
-            values = new float[width * height * depth];
+            Vector.Add(vector1, vector2).CopyTo(result.values, i);
         }
 
-        public Tensor((int width, int height, int depth) size)
-            : this(size.width, size.height, size.depth)
+        for (; i < count; i++)
         {
+            result[i] = tensor.values[i] + array[i];
         }
 
-        public Tensor(int length)
-            : this(length, 1, 1)
+        return result;
+    }
+
+    public static void Copy(Tensor src, int srcX, int srcY, int srcZ, Tensor dst, int dstX, int dstY, int dstZ, int count)
+    {
+        var srcOffset = src.IndexOf(srcX, srcY, srcZ);
+        var dstOffset = dst.IndexOf(dstX, dstY, dstZ);
+
+        Array.Copy(src.values, srcOffset, dst.values, dstOffset, count);
+    }
+
+    public static Tensor Create(float[] array)
+    {
+        var tensor = new Tensor(array.Length);
+        tensor.Load(array);
+        return tensor;
+    }
+
+    public static Tensor Create(Tensor tensor)
+    {
+        return Create(tensor.values);
+    }
+
+    public static float Dot(Tensor tensor1, Tensor tensor2) => Dot(tensor1.values, tensor2.values);
+
+    public static float Dot(float[] array1, float[] array2)
+    {
+        float accumulator = 0f;
+
+        int i = 0,
+            step = Vector<float>.Count,
+            count = Math.Min(array1.Length, array2.Length);
+
+        for (; i < count - step; i += step)
         {
+            var vector1 = new Vector<float>(array1, i);
+            var vector2 = new Vector<float>(array2, i);
+
+            accumulator += Vector.Dot(vector1, vector2);
         }
 
-        public Tensor(int width, int height)
-            : this(width, height, 1)
+        for (; i < count; i++)
         {
+            accumulator += array1[i] * array2[i];
         }
 
-        private Tensor(float[] values)
-        {
-            this.values = values;
+        return accumulator;
+    }
 
-            Width = values.Length;
-            Height = 1;
-            Depth = 1;
+    public static float Dot(Span<float> span1, Span<float> span2)
+    {
+        var vector1 = new Vector<float>(span1);
+        var vector2 = new Vector<float>(span2);
+
+        return Vector.Dot(vector1, vector2);
+    }
+
+    public static Tensor Multiply(Tensor tensor, float value)
+    {
+        var result = new Tensor(tensor.Dimensions);
+        Multiply(tensor, value, result);
+        return result;
+    }
+
+    public static void Multiply(Tensor tensor, float value, Tensor result)
+    {
+        int i = 0,
+            step = Vector<float>.Count,
+            count = tensor.Length;
+
+        for (; i < count - step; i += step)
+        {
+            var vector = new Vector<float>(tensor.values, i);
+
+            Vector.Multiply(vector, value).CopyTo(result.values, i);
         }
 
-        public int Depth { get; private set; }
-
-        public (int, int, int) Dimensions => (Width, Height, Depth);
-
-        public int Height { get; private set; }
-
-        public int Length => values.Length;
-
-        public int Width { get; private set; }
-
-        public ref float this[int i] => ref values[i];
-
-        public ref float this[int x, int y] => ref this[IndexOf(x, y)];
-
-        public ref float this[int x, int y, int z] => ref this[IndexOf(x, y, z)];
-
-        public static Tensor Add(Tensor tensor1, Tensor tensor2) => Add(tensor1, tensor2.values);
-
-        public static Tensor Add(Tensor tensor, float[] array)
+        for (; i < count; i++)
         {
-            var result = new Tensor(tensor.Dimensions);
+            result[i] = tensor.values[i] * value;
+        }
+    }
 
-            int i = 0,
-                step = Vector<float>.Count,
-                count = tensor.Length;
+    public static void Multiply(Tensor tensor, float[] array, Tensor result)
+    {
+        int i = 0,
+            step = Vector<float>.Count,
+            count = tensor.Length;
 
-            for (; i < count - step; i += step)
-            {
-                var vector1 = new Vector<float>(tensor.values, i);
-                var vector2 = new Vector<float>(array, i);
+        for (; i < count - step; i += step)
+        {
+            var vector1 = new Vector<float>(tensor.values, i);
+            var vector2 = new Vector<float>(array, i);
 
-                Vector.Add(vector1, vector2).CopyTo(result.values, i);
-            }
-
-            for (; i < count; i++)
-            {
-                result[i] = tensor.values[i] + array[i];
-            }
-
-            return result;
+            Vector.Multiply(vector1, vector2).CopyTo(result.values, i);
         }
 
-        public static void Copy(Tensor src, int srcX, int srcY, int srcZ, Tensor dst, int dstX, int dstY, int dstZ, int count)
+        for (; i < count; i++)
         {
-            var srcOffset = src.IndexOf(srcX, srcY, srcZ);
-            var dstOffset = dst.IndexOf(dstX, dstY, dstZ);
+            result[i] = tensor.values[i] * array[i];
+        }
+    }
 
-            Array.Copy(src.values, srcOffset, dst.values, dstOffset, count);
+    public static Tensor Multiply(Tensor tensor1, Tensor tensor2) => Multiply(tensor1, tensor2.values);
+
+    public static Tensor Multiply(Tensor tensor, float[] array)
+    {
+        var result = new Tensor(tensor.Dimensions);
+        Multiply(tensor, array, result);
+        return result;
+    }
+
+    public static Tensor Wrap(float[] values)
+    {
+        return new Tensor(values);
+    }
+
+    public Tensor Add(Tensor tensor) => Add(tensor.values);
+
+    public Tensor Add(float[] array)
+    {
+        int i = 0,
+            step = Vector<float>.Count,
+            count = values.Length;
+
+        for (; i < count - step; i += step)
+        {
+            var vector1 = new Vector<float>(values, i);
+            var vector2 = new Vector<float>(array, i);
+
+            Vector.Add(vector1, vector2).CopyTo(values, i);
         }
 
-        public static Tensor Create(float[] array)
+        for (; i < count; i++)
         {
-            var tensor = new Tensor(array.Length);
-            tensor.Load(array);
-            return tensor;
+            values[i] += array[i];
         }
 
-        public static Tensor Create(Tensor tensor)
+        return this;
+    }
+
+    public void Clear(float value)
+    {
+        for (int i = 0, count = values.Length; i < count; i++)
         {
-            return Create(tensor.values);
+            values[i] = value;
         }
+    }
 
-        public static float Dot(Tensor tensor1, Tensor tensor2) => Dot(tensor1.values, tensor2.values);
+    public void Clear()
+    {
+        Array.Clear(values, 0, values.Length);
+    }
 
-        public static float Dot(float[] array1, float[] array2)
-        {
-            float accumulator = 0f;
+    public void CopyTo(Tensor tensor, int offset) => CopyTo(tensor.values, offset);
 
-            int i = 0,
-                step = Vector<float>.Count,
-                count = Math.Min(array1.Length, array2.Length);
+    public void CopyTo(float[] array, int offset)
+    {
+        Array.Copy(values, 0, array, offset, values.Length);
+    }
 
-            for (; i < count - step; i += step)
-            {
-                var vector1 = new Vector<float>(array1, i);
-                var vector2 = new Vector<float>(array2, i);
+    public float Dot(float[] array) => Dot(values, array);
 
-                accumulator += Vector.Dot(vector1, vector2);
-            }
+    public float Dot(Tensor tensor) => Dot(values, tensor.values);
 
-            for (; i < count; i++)
-            {
-                accumulator += array1[i] * array2[i];
-            }
+    public IEnumerator<float> GetEnumerator()
+    {
+        return ((IEnumerable<float>)values).GetEnumerator();
+    }
 
-            return accumulator;
-        }
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return values.GetEnumerator();
+    }
 
-        public static Tensor Multiply(Tensor tensor, float value)
-        {
-            var result = new Tensor(tensor.Dimensions);
-            Multiply(tensor, value, result);
-            return result;
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int IndexOf(int x, int y)
+    {
+        return x + (y * Width);
+    }
 
-        public static void Multiply(Tensor tensor, float value, Tensor result)
-        {
-            int i = 0,
-                step = Vector<float>.Count,
-                count = tensor.Length;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int IndexOf(int x, int y, int z)
+    {
+        return x + (y * Width) + (z * Width * Height);
+    }
 
-            for (; i < count - step; i += step)
-            {
-                var vector = new Vector<float>(tensor.values, i);
+    public void Load(Tensor source, int sourceOffset) => Load(source.values, sourceOffset);
 
-                Vector.Multiply(vector, value).CopyTo(result.values, i);
-            }
+    public void Load(float[] source, int sourceOffset)
+    {
+        Buffer.BlockCopy(source, sourceOffset, values, 0, values.Length * sizeof(float));
+    }
 
-            for (; i < count; i++)
-            {
-                result[i] = tensor.values[i] * value;
-            }
-        }
+    public void Load(Tensor source) => Load(source.values);
 
-        public static void Multiply(Tensor tensor, float[] array, Tensor result)
-        {
-            int i = 0,
-                step = Vector<float>.Count,
-                count = tensor.Length;
+    public void Load(float[] source)
+    {
+        Buffer.BlockCopy(source, 0, values, 0, values.Length * sizeof(float));
+    }
 
-            for (; i < count - step; i += step)
-            {
-                var vector1 = new Vector<float>(tensor.values, i);
-                var vector2 = new Vector<float>(array, i);
+    public Tensor Multiply(float value)
+    {
+        Multiply(this, value, this);
 
-                Vector.Multiply(vector1, vector2).CopyTo(result.values, i);
-            }
+        return this;
+    }
 
-            for (; i < count; i++)
-            {
-                result[i] = tensor.values[i] * array[i];
-            }
-        }
+    public Tensor Multiply(Tensor tensor) => Multiply(tensor.values);
 
-        public static Tensor Multiply(Tensor tensor1, Tensor tensor2) => Multiply(tensor1, tensor2.values);
+    public Tensor Multiply(float[] array)
+    {
+        Multiply(this, array, this);
 
-        public static Tensor Multiply(Tensor tensor, float[] array)
-        {
-            var result = new Tensor(tensor.Dimensions);
-            Multiply(tensor, array, result);
-            return result;
-        }
+        return this;
+    }
 
-        public static Tensor Wrap(float[] values)
-        {
-            return new Tensor(values);
-        }
+    public Tensor Reshape(int width, int height, int depth)
+    {
+        Width = width;
+        Height = height;
+        Depth = depth;
 
-        public Tensor Add(Tensor tensor) => Add(tensor.values);
-
-        public Tensor Add(float[] array)
-        {
-            int i = 0,
-                step = Vector<float>.Count,
-                count = values.Length;
-
-            for (; i < count - step; i += step)
-            {
-                var vector1 = new Vector<float>(values, i);
-                var vector2 = new Vector<float>(array, i);
-
-                Vector.Add(vector1, vector2).CopyTo(values, i);
-            }
-
-            for (; i < count; i++)
-            {
-                values[i] += array[i];
-            }
-
-            return this;
-        }
-
-        public void Clear(float value)
-        {
-            for (int i = 0, count = values.Length; i < count; i++)
-            {
-                values[i] = value;
-            }
-        }
-
-        public void Clear()
-        {
-            Array.Clear(values, 0, values.Length);
-        }
-
-        public void CopyTo(Tensor tensor, int offset) => CopyTo(tensor.values, offset);
-
-        public void CopyTo(float[] array, int offset)
-        {
-            Array.Copy(values, 0, array, offset, values.Length);
-        }
-
-        public float Dot(float[] array) => Dot(values, array);
-
-        public float Dot(Tensor tensor) => Dot(values, tensor.values);
-
-        public IEnumerator<float> GetEnumerator()
-        {
-            return ((IEnumerable<float>)values).GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return values.GetEnumerator();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf(int x, int y)
-        {
-            return x + (y * Width);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf(int x, int y, int z)
-        {
-            return x + (y * Width) + (z * Width * Height);
-        }
-
-        public void Load(Tensor source, int sourceOffset) => Load(source.values, sourceOffset);
-
-        public void Load(float[] source, int sourceOffset)
-        {
-            Buffer.BlockCopy(source, sourceOffset, values, 0, values.Length * sizeof(float));
-        }
-
-        public void Load(Tensor source) => Load(source.values);
-
-        public void Load(float[] source)
-        {
-            Buffer.BlockCopy(source, 0, values, 0, values.Length * sizeof(float));
-        }
-
-        public Tensor Multiply(float value)
-        {
-            Multiply(this, value, this);
-
-            return this;
-        }
-
-        public Tensor Multiply(Tensor tensor) => Multiply(tensor.values);
-
-        public Tensor Multiply(float[] array)
-        {
-            Multiply(this, array, this);
-
-            return this;
-        }
-
-        public Tensor Reshape(int width, int height, int depth)
-        {
-            Width = width;
-            Height = height;
-            Depth = depth;
-
-            return this;
-        }
-
-#if NETSTANDARD2_1_OR_GREATER
-        public static float Dot(Span<float> span1, Span<float> span2)
-        {
-            var vector1 = new Vector<float>(span1);
-            var vector2 = new Vector<float>(span2);
-
-            return Vector.Dot(vector1, vector2);
-        }
-#endif
+        return this;
     }
 }

@@ -1,7 +1,12 @@
-﻿namespace TurtleML
+﻿namespace TurtleML;
+
+/// <summary>
+/// Represents an interface for output values.
+/// </summary>
+public interface IOutput
 {
-    public interface IOutput
-    {
-        Tensor Outputs { get; }
-    }
+    /// <summary>
+    /// Gets the output values.
+    /// </summary>
+    Tensor Outputs { get; }
 }

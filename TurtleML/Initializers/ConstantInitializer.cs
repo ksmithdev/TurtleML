@@ -1,19 +1,18 @@
-﻿using System;
+﻿namespace TurtleML.Initializers;
 
-namespace TurtleML.Initializers
+using System;
+
+public class ConstantInitializer : IInitializer
 {
-    public class ConstantInitializer : IInitializer
+    private readonly float value;
+
+    public ConstantInitializer(float value)
     {
-        private readonly float value;
+        this.value = value;
+    }
 
-        public ConstantInitializer(float value)
-        {
-            this.value = value;
-        }
-
-        public float Sample(int inputs, int outputs, Random random)
-        {
-            return value;
-        }
+    public float Sample(int inputs, int outputs, Random random)
+    {
+        return value;
     }
 }

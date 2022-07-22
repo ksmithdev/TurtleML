@@ -1,21 +1,20 @@
-﻿using System;
+﻿namespace TurtleML.Initializers;
 
-namespace TurtleML.Initializers
+using System;
+
+public class RandomUniformInitializer : IInitializer
 {
-    public class RandomUniformInitializer : IInitializer
+    private readonly float max;
+    private readonly float min;
+
+    public RandomUniformInitializer(float min, float max)
     {
-        private readonly float max;
-        private readonly float min;
+        this.min = min;
+        this.max = max;
+    }
 
-        public RandomUniformInitializer(float min, float max)
-        {
-            this.min = min;
-            this.max = max;
-        }
-
-        public float Sample(int inputs, int outputs, Random random)
-        {
-            return ((float)random.NextDouble() * (max - min)) + min;
-        }
+    public float Sample(int inputs, int outputs, Random random)
+    {
+        return ((float)random.NextDouble() * (max - min)) + min;
     }
 }

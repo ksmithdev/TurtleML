@@ -1,9 +1,8 @@
-﻿using System;
+﻿namespace TurtleML.Loss;
 
-namespace TurtleML.Loss
+using System;
+
+public class CrossEntropyLoss : LossFunctionBase
 {
-    public class CrossEntropyLoss : LossFunctionBase
-    {
-        public override float Calculate(float actual, float expected) => -expected * (float)Math.Log(actual);
-    }
+    public override float Calculate(float actual, float expected) => -expected * (float)Math.Log(actual);
 }
