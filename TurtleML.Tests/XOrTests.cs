@@ -5,7 +5,6 @@
     using TurtleML.Activations;
     using TurtleML.Initializers;
     using TurtleML.Layers;
-    using TurtleML.LearningPolicies;
     using TurtleML.Loss;
 
     [TestClass]
@@ -19,7 +18,7 @@
                 .Loss(new MeanSquareError())
                 .Seed(seed)
                 .Layers(
-                    new InputLayer.Builder().Dimensions(2),
+                    new ReshapeLayer.Builder().Dimensions(2),
                     new FullyConnectedLayer.Builder()
                         .Outputs(3)
                         .Initializer(new HeInitializer(), new ZeroInitializer())
@@ -31,27 +30,27 @@
                 )
                 .Build();
 
-            var trainingSet = new TrainingSet
+            var trainingSet = new TensorSet
             {
-                { Tensor.Create(new[] { 0f, 0f }), Tensor.Create(new[] { 0f }) },
-                { Tensor.Create(new[] { 1f, 0f }), Tensor.Create(new[] { 1f }) },
-                { Tensor.Create(new[] { 0f, 1f }), Tensor.Create(new[] { 1f }) },
-                { Tensor.Create(new[] { 1f, 1f }), Tensor.Create(new[] { 0f }) }
+                { Tensor.Create([0f, 0f]), Tensor.Create([0f]) },
+                { Tensor.Create([1f, 0f]), Tensor.Create([1f]) },
+                { Tensor.Create([0f, 1f]), Tensor.Create([1f]) },
+                { Tensor.Create([1f, 1f]), Tensor.Create([0f]) }
             };
 
             float finalError = 0f;
             network.TrainingProgress += (s, e) => finalError = e.TrainingError;
             network.Fit(trainingSet, trainingSet, 2_000);
 
-            var output1 = network.CalculateOutputs(Tensor.Create(new[] { 0f, 0f }))[0];
-            var output2 = network.CalculateOutputs(Tensor.Create(new[] { 1f, 0f }))[0];
-            var output3 = network.CalculateOutputs(Tensor.Create(new[] { 0f, 1f }))[0];
-            var output4 = network.CalculateOutputs(Tensor.Create(new[] { 1f, 1f }))[0];
+            var output1 = network.CalculateOutputs(Tensor.Create([0f, 0f]))[0];
+            var output2 = network.CalculateOutputs(Tensor.Create([1f, 0f]))[0];
+            var output3 = network.CalculateOutputs(Tensor.Create([0f, 1f]))[0];
+            var output4 = network.CalculateOutputs(Tensor.Create([1f, 1f]))[0];
 
-            Assert.IsTrue(Math.Round(output1, 0) == 0.0);
-            Assert.IsTrue(Math.Round(output2, 0) == 1.0);
-            Assert.IsTrue(Math.Round(output3, 0) == 1.0);
-            Assert.IsTrue(Math.Round(output4, 0) == 0.0);
+            Assert.AreEqual(0.0, Math.Round(output1, 0));
+            Assert.AreEqual(1.0, Math.Round(output2, 0));
+            Assert.AreEqual(1.0, Math.Round(output3, 0));
+            Assert.AreEqual(0.0, Math.Round(output4, 0));
         }
     }
 }

@@ -4,6 +4,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
+/// <summary>
+/// Applies dropout regularization during training to prevent overfitting.
+/// </summary>
 public sealed class DropOutLayer : ILayer
 {
     private readonly float dropOut;
@@ -22,13 +25,16 @@ public sealed class DropOutLayer : ILayer
         Outputs = new Tensor(inputs.Dimensions);
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; }
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
         return errors;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         Debug.Assert(inputs.Length == Outputs.Length, $"Your input array (size: {inputs.Length}) does not match the specified size of {Outputs.Length}.");
@@ -46,6 +52,7 @@ public sealed class DropOutLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(Outputs.Width);
@@ -53,11 +60,13 @@ public sealed class DropOutLayer : ILayer
         writer.Write(Outputs.Depth);
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
         this.random = random ?? new Random();
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         int width = reader.ReadInt32();
@@ -66,15 +75,24 @@ public sealed class DropOutLayer : ILayer
         Outputs = new Tensor(width, height, depth);
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="DropOutLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
         private float dropOut;
 
+        /// <inheritdoc/>
         public ILayer Build(IOutput input)
         {
             return new DropOutLayer(dropOut, input);
         }
 
+        /// <summary>
+        /// Sets the dropout rate.
+        /// </summary>
+        /// <param name="dropOut">The probability of dropping out a neuron (0.0 to 1.0).</param>
+        /// <returns>The current builder instance.</returns>
         public Builder DropOut(float dropOut)
         {
             this.dropOut = dropOut;

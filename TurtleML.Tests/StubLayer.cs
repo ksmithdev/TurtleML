@@ -1,40 +1,35 @@
-﻿namespace TurtleML.Tests
+﻿namespace TurtleML.Tests;
+
+using System;
+using System.IO;
+
+/// <summary>
+/// Defines a layer used for stubbing input and output.
+/// </summary>
+class StubLayer : ILayer
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
+    public Tensor Outputs { get; set; }
 
-    /// <summary>
-    /// Defines a layer used for stubbing input and output.
-    /// </summary>
-    class StubLayer : ILayer
+    public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
-        public Tensor Outputs { get; set; }
+        return errors;
+    }
 
-        public Tensor Backpropagate(Tensor errors, float learningRate, float momentumRate)
-        {
-            return errors;
-        }
+    public Tensor CalculateOutputs(Tensor inputs, bool training = false)
+    {
+        Outputs = inputs;
+        return inputs;
+    }
 
-        public Tensor CalculateOutputs(Tensor inputs, bool training = false)
-        {
-            Outputs = inputs;
-            return inputs;
-        }
+    public void Dump(BinaryWriter writer)
+    {
+    }
 
-        public void Dump(BinaryWriter writer)
-        {
-        }
+    public void Initialize(Random random)
+    {
+    }
 
-        public void Initialize(Random random)
-        {
-        }
-
-        public void Restore(BinaryReader reader)
-        {
-        }
+    public void Restore(BinaryReader reader)
+    {
     }
 }

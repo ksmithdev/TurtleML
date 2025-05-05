@@ -3,11 +3,19 @@
 using System;
 using System.IO;
 
+/// <summary>
+/// Adds padding to the input tensor.
+/// </summary>
 public class PaddingLayer : ILayer
 {
     private readonly Tensor signals = Tensor.Empty;
     private int padding;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PaddingLayer"/> class.
+    /// </summary>
+    /// <param name="padding">The amount of padding to apply.</param>
+    /// <param name="input">The input tensor to this layer.</param>
     public PaddingLayer(int padding, IOutput input)
     {
         this.padding = padding;
@@ -25,8 +33,10 @@ public class PaddingLayer : ILayer
     {
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; } = Tensor.Empty;
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
         int width = signals.Width;
@@ -45,6 +55,7 @@ public class PaddingLayer : ILayer
         return signals;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         int width = inputs.Width;
@@ -63,6 +74,7 @@ public class PaddingLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(padding);
@@ -72,10 +84,12 @@ public class PaddingLayer : ILayer
         writer.Write(Outputs.Depth);
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         padding = reader.ReadInt32();
@@ -87,12 +101,21 @@ public class PaddingLayer : ILayer
         Outputs = new Tensor(width, height, depth);
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="PaddingLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
         private int size;
 
+        /// <inheritdoc/>
         public ILayer Build(IOutput input) => new PaddingLayer(size, input);
 
+        /// <summary>
+        /// Sets the padding size.
+        /// </summary>
+        /// <param name="size">The amount of padding to apply.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Padding(int size)
         {
             this.size = size;

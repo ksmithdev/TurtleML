@@ -35,11 +35,11 @@ namespace TurtleML.Tests
 
             var output = convolutionLayer.CalculateOutputs(test);
 
-            Assert.AreEqual(output.Dimensions, (2, 2, 1));
-            Assert.AreEqual(output[0], 9);
-            Assert.AreEqual(output[1], 13);
-            Assert.AreEqual(output[2], 21);
-            Assert.AreEqual(output[3], 25);
+            Assert.AreEqual((2, 2, 1), output.Dimensions);
+            Assert.AreEqual(9, output[0]);
+            Assert.AreEqual(13, output[1]);
+            Assert.AreEqual(21, output[2]);
+            Assert.AreEqual(25, output[3]);
         }
     }
 }

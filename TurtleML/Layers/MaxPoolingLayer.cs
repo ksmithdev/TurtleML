@@ -3,6 +3,9 @@
 using System;
 using System.IO;
 
+/// <summary>
+/// Performs max pooling operations on the input tensor.
+/// </summary>
 public sealed class MaxPoolingLayer : ILayer
 {
     private readonly Tensor signals = Tensor.Empty;
@@ -45,8 +48,10 @@ public sealed class MaxPoolingLayer : ILayer
         switches = new (int, int, int)[outputWidth, outputHeight, inputDepth];
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; } = Tensor.Empty;
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
         signals.Clear();
@@ -67,6 +72,7 @@ public sealed class MaxPoolingLayer : ILayer
         return signals;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         Outputs.Clear(float.MinValue);
@@ -92,6 +98,7 @@ public sealed class MaxPoolingLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(sampleWidth);
@@ -106,10 +113,12 @@ public sealed class MaxPoolingLayer : ILayer
         writer.Write(switches.GetLength(2));
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         sampleWidth = reader.ReadInt32();
@@ -128,16 +137,26 @@ public sealed class MaxPoolingLayer : ILayer
         switches = new (int, int, int)[switchWidth, switchHeight, switchDepth];
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="MaxPoolingLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
         private int sampleHeight;
         private int sampleWidth;
 
+        /// <inheritdoc/>
         public ILayer Build(IOutput input)
         {
             return new MaxPoolingLayer(sampleWidth, sampleHeight, input);
         }
 
+        /// <summary>
+        /// Sets the pooling window dimensions.
+        /// </summary>
+        /// <param name="width">The width of the pooling window.</param>
+        /// <param name="height">The height of the pooling window.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Sample(int width, int height)
         {
             sampleWidth = width;

@@ -6,14 +6,19 @@ using System.IO;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Represents an inference network for calculating an output.
+/// Represents a neural network used for inference tasks, composed of layered processing units.
 /// </summary>
+/// <remarks>
+/// The network is initialized with a loss function and a sequence of layers. It supports
+/// restoration from binary data and provides methods to calculate outputs through its layers.
+/// </remarks>
 public class InferenceNetwork
 {
     /// <summary>
     /// The collection of layers in the network.
     /// </summary>
     protected readonly ILayer[] Layers;
+
     /// <summary>
     /// The loss function.
     /// </summary>
@@ -22,8 +27,8 @@ public class InferenceNetwork
     /// <summary>
     /// Initializes a new instance of the <see cref="InferenceNetwork"/> class.
     /// </summary>
-    /// <param name="loss"></param>
-    /// <param name="layers"></param>
+    /// <param name="loss">The loss function to use for training/evaluation.</param>
+    /// <param name="layers">The array of layers composing the network.</param>
     protected InferenceNetwork(ILossFunction loss, ILayer[] layers)
     {
         Loss = loss;
@@ -31,15 +36,17 @@ public class InferenceNetwork
     }
 
     /// <summary>
-    ///
+    /// Gets the internal layers as an enumerable collection.
     /// </summary>
     public IEnumerable<ILayer> InternalLayers => Layers;
 
     /// <summary>
-    ///
+    /// Restores a network from a file.
     /// </summary>
-    /// <param name="fileInfo"></param>
-    /// <returns></returns>
+    /// <param name="fileInfo">The file containing serialized network data.</param>
+    /// <returns>A new <see cref="InferenceNetwork"/> instance.</returns>
+    /// <exception cref="InvalidDataException">Thrown if the file contains invalid network data.</exception>
+    /// <exception cref="InvalidOperationException">Thrown for version mismatches or invalid types.</exception>
     public static InferenceNetwork Restore(FileInfo fileInfo)
     {
         using var file = fileInfo.OpenRead();
@@ -47,12 +54,12 @@ public class InferenceNetwork
     }
 
     /// <summary>
-    ///
+    /// Restores a network from a stream.
     /// </summary>
-    /// <param name="stream"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidDataException"></exception>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="stream">The stream containing serialized network data.</param>
+    /// <returns>A new <see cref="InferenceNetwork"/> instance.</returns>
+    /// <exception cref="InvalidDataException">Thrown if the stream contains invalid network data.</exception>
+    /// <exception cref="InvalidOperationException">Thrown for version mismatches or invalid types.</exception>
     public static InferenceNetwork Restore(Stream stream)
     {
         using var reader = new BinaryReader(stream);
@@ -92,10 +99,10 @@ public class InferenceNetwork
     }
 
     /// <summary>
-    ///
+    /// Calculates output tensors by processing inputs through all layers.
     /// </summary>
-    /// <param name="inputs"></param>
-    /// <returns></returns>
+    /// <param name="inputs">The input tensor to process.</param>
+    /// <returns>The resulting output tensor after layer transformations.</returns>
     public Tensor CalculateOutputs(Tensor inputs)
     {
         var results = inputs;

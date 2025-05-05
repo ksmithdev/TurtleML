@@ -5,6 +5,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// Represents a fully connected (dense) neural network layer.
+/// </summary>
 public sealed class FullyConnectedLayer : ILayer
 {
     private readonly IInitializer biasInitializer;
@@ -47,8 +50,10 @@ public sealed class FullyConnectedLayer : ILayer
         signals = new Tensor(inputs.Dimensions);
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; }
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
         signals.Clear();
@@ -79,6 +84,7 @@ public sealed class FullyConnectedLayer : ILayer
         return signals;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         Debug.Assert(inputs.Length == inputSize, $"Your input array (size: {inputs.Length}) does not match the specified size of {inputSize}.");
@@ -91,6 +97,7 @@ public sealed class FullyConnectedLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(activation.GetType().AssemblyQualifiedName);
@@ -114,6 +121,7 @@ public sealed class FullyConnectedLayer : ILayer
         }
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
         var rnd = random ?? new Random();
@@ -121,12 +129,15 @@ public sealed class FullyConnectedLayer : ILayer
         for (int o = 0; o < outputSize; o++)
         {
             for (int w = 0; w < inputSize; w++)
+            {
                 weights[o][w] = weightInitializer.Sample(inputSize, outputSize, rnd);
+            }
 
             bias[o] = biasInitializer.Sample(inputSize, outputSize, rnd);
         }
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         var activationType = reader.ReadString();
@@ -165,6 +176,9 @@ public sealed class FullyConnectedLayer : ILayer
         }
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="FullyConnectedLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
         private IActivationFunction? activation;
@@ -172,6 +186,11 @@ public sealed class FullyConnectedLayer : ILayer
         private int outputCount;
         private IInitializer? weightInitializer;
 
+        /// <summary>
+        /// Sets the activation function for the layer.
+        /// </summary>
+        /// <param name="activation">The activation function to use.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Activation(IActivationFunction activation)
         {
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
@@ -179,15 +198,33 @@ public sealed class FullyConnectedLayer : ILayer
             return this;
         }
 
+        /// <inheritdoc/>
         public ILayer Build(IOutput input)
         {
-            if (activation == null) throw new InvalidOperationException($"{nameof(activation)} cannot be null.");
-            if (weightInitializer == null) throw new InvalidOperationException($"{nameof(weightInitializer)} cannot be null.");
-            if (biasInitializer == null) throw new InvalidOperationException($"{nameof(biasInitializer)} cannot be null.");
+            if (activation == null)
+            {
+                throw new InvalidOperationException($"{nameof(activation)} cannot be null.");
+            }
+
+            if (weightInitializer == null)
+            {
+                throw new InvalidOperationException($"{nameof(weightInitializer)} cannot be null.");
+            }
+
+            if (biasInitializer == null)
+            {
+                throw new InvalidOperationException($"{nameof(biasInitializer)} cannot be null.");
+            }
 
             return new FullyConnectedLayer(outputCount, activation, weightInitializer, biasInitializer, input);
         }
 
+        /// <summary>
+        /// Sets weight and bias initializers for the layer.
+        /// </summary>
+        /// <param name="weight">Initializer for weights.</param>
+        /// <param name="bias">Optional initializer for biases.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Initializer(IInitializer weight, IInitializer? bias = null)
         {
             weightInitializer = weight ?? throw new ArgumentNullException(nameof(weight));
@@ -196,6 +233,11 @@ public sealed class FullyConnectedLayer : ILayer
             return this;
         }
 
+        /// <summary>
+        /// Sets the number of output neurons.
+        /// </summary>
+        /// <param name="outputCount">The number of output neurons in the layer.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Outputs(int outputCount)
         {
             if (outputCount < 1)

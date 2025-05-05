@@ -3,19 +3,25 @@
 using System;
 using System.IO;
 
+/// <summary>
+/// Reshapes the input tensor to a specified dimension.
+/// </summary>
 public sealed class ReshapeLayer : ILayer
 {
     private ReshapeLayer()
     {
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; } = Tensor.Empty;
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor? inputs, Tensor errors, float learningRate, float momentumRate)
     {
         return errors;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         if (inputs.Length != Outputs.Length)
@@ -28,6 +34,7 @@ public sealed class ReshapeLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(Outputs.Width);
@@ -35,10 +42,12 @@ public sealed class ReshapeLayer : ILayer
         writer.Write(Outputs.Depth);
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         int width = reader.ReadInt32();
@@ -48,17 +57,28 @@ public sealed class ReshapeLayer : ILayer
         Outputs = new Tensor(width, length, depth);
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="ReshapeLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
         private int depth = 1;
         private int length = 1;
         private int width = 1;
 
+        /// <inheritdoc/>
         public ILayer Build(IOutput input)
         {
             return new ReshapeLayer() { Outputs = new Tensor((width, length, depth)) };
         }
 
+        /// <summary>
+        /// Sets the dimensions for reshaping.
+        /// </summary>
+        /// <param name="width">The new width of the tensor.</param>
+        /// <param name="length">The new length of the tensor.</param>
+        /// <param name="depth">The new depth of the tensor.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Dimensions(int width, int length, int depth)
         {
             this.width = width;
@@ -68,6 +88,12 @@ public sealed class ReshapeLayer : ILayer
             return this;
         }
 
+        /// <summary>
+        /// Sets the dimensions for reshaping.
+        /// </summary>
+        /// <param name="width">The new width of the tensor.</param>
+        /// <param name="height">The new height of the tensor.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Dimensions(int width, int height)
         {
             this.width = width;
@@ -76,6 +102,11 @@ public sealed class ReshapeLayer : ILayer
             return this;
         }
 
+        /// <summary>
+        /// Sets the dimensions for reshaping.
+        /// </summary>
+        /// <param name="length">The new length of the tensor.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Dimensions(int length)
         {
             width = length;

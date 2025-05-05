@@ -3,6 +3,9 @@
 using System;
 using System.IO;
 
+/// <summary>
+/// Represents a softmax output layer in a neural network, which normalizes the outputs to probabilities.
+/// </summary>
 public sealed class SoftMaxOutputLayer : ILayer
 {
     private SoftMaxOutputLayer(IOutput input)
@@ -13,8 +16,10 @@ public sealed class SoftMaxOutputLayer : ILayer
         Outputs = new Tensor(inputSize);
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; } = Tensor.Empty;
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
         var signals = new Tensor(Outputs.Length);
@@ -31,6 +36,7 @@ public sealed class SoftMaxOutputLayer : ILayer
         return signals;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         float sum = 0f;
@@ -47,6 +53,7 @@ public sealed class SoftMaxOutputLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(Outputs.Width);
@@ -54,10 +61,12 @@ public sealed class SoftMaxOutputLayer : ILayer
         writer.Write(Outputs.Depth);
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         int width = reader.ReadInt32();
@@ -67,8 +76,12 @@ public sealed class SoftMaxOutputLayer : ILayer
         Outputs = new Tensor(width, length, depth);
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="SoftMaxOutputLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
+        /// <inheritdoc/>
         public ILayer Build(IOutput input)
         {
             return new SoftMaxOutputLayer(input);

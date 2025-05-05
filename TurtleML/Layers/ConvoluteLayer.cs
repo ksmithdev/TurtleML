@@ -5,6 +5,9 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using TurtleML.Initializers;
 
+/// <summary>
+/// Represents a convolutional layer in a neural network, applying filters to input data.
+/// </summary>
 public sealed class ConvoluteLayer : ILayer
 {
     private readonly float[] momentum;
@@ -52,8 +55,10 @@ public sealed class ConvoluteLayer : ILayer
         signals = new Tensor(inputWidth, inputHeight, inputDepth);
     }
 
+    /// <inheritdoc/>
     public Tensor Outputs { get; private set; }
 
+    /// <inheritdoc/>
     public Tensor Backpropagate(Tensor inputs, Tensor errors, float learningRate, float momentumRate)
     {
         signals.Clear();
@@ -68,14 +73,14 @@ public sealed class ConvoluteLayer : ILayer
 
         var gradients = derivatives.Multiply(errors);
 
-    /*
-     * TODO: some way to speed up signal calculations ? this is the slowest part of the whole system right now
-     * for (int f = 0; f < signals.Depth; f++)
-     *     for (int y = 0; y < signals.Height; y++)
-     *         for (int x = 0; x < signals.Width; x++)
-     *         {
-     *         }
-    */
+        /*
+         * TODO: some way to speed up signal calculations ? this is the slowest part of the whole system right now
+         * for (int f = 0; f < signals.Depth; f++)
+         *     for (int y = 0; y < signals.Height; y++)
+         *         for (int x = 0; x < signals.Width; x++)
+         *         {
+         *         }
+        */
 
         for (int f = 0, depth = gradients.Depth; f < depth; f++)
         {
@@ -118,6 +123,7 @@ public sealed class ConvoluteLayer : ILayer
         return signals;
     }
 
+    /// <inheritdoc/>
     public Tensor CalculateOutputs(Tensor inputs, bool training = false)
     {
         var buffer = new Tensor(filterWidth, filterHeight, inputs.Depth);
@@ -150,6 +156,7 @@ public sealed class ConvoluteLayer : ILayer
         return Outputs;
     }
 
+    /// <inheritdoc/>
     public void Dump(BinaryWriter writer)
     {
         writer.Write(activation.GetType().AssemblyQualifiedName);
@@ -181,6 +188,7 @@ public sealed class ConvoluteLayer : ILayer
         }
     }
 
+    /// <inheritdoc/>
     public void Initialize(Random random)
     {
         var rnd = random ?? new Random();
@@ -189,12 +197,15 @@ public sealed class ConvoluteLayer : ILayer
         for (int f = 0, features = filterDepth; f < features; f++)
         {
             for (int w = 0; w < weights[f].Length; w++)
+            {
                 weights[f][w] = initializer.Sample(inputs, outputs, rnd);
+            }
 
             bias[f] = initializer.Sample(inputs, outputs, rnd);
         }
     }
 
+    /// <inheritdoc/>
     public void Restore(BinaryReader reader)
     {
         var activationType = reader.ReadString();
@@ -239,6 +250,9 @@ public sealed class ConvoluteLayer : ILayer
         }
     }
 
+    /// <summary>
+    /// Builder class for constructing <see cref="DropOutLayer"/> instances.
+    /// </summary>
     public class Builder : ILayerBuilder
     {
         private IActivationFunction? activation;
@@ -248,10 +262,22 @@ public sealed class ConvoluteLayer : ILayer
         private int filterWidth;
         private IInitializer? initializer;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Builder"/> class.
+        /// </summary>
         public Builder()
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Builder"/> class.
+        /// </summary>
+        /// <param name="activation">The activation function for the layer.</param>
+        /// <param name="filterWidth">Width of convolutional filters.</param>
+        /// <param name="filterHeight">Height of convolutional filters.</param>
+        /// <param name="filterStride">Strides between filter applications.</param>
+        /// <param name="filterCount">Number of filters in the layer.</param>
+        /// <param name="initializer">Optional weight initializer for the layer.</param>
         public Builder(IActivationFunction activation, int filterWidth, int filterHeight, int filterStride, int filterCount, IInitializer? initializer = null)
         {
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
@@ -262,6 +288,11 @@ public sealed class ConvoluteLayer : ILayer
             this.initializer = initializer;
         }
 
+        /// <summary>
+        /// Sets the activation function for the layer.
+        /// </summary>
+        /// <param name="activation">The activation function to use.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Activation(IActivationFunction activation)
         {
             this.activation = activation ?? throw new ArgumentNullException(nameof(activation));
@@ -269,6 +300,7 @@ public sealed class ConvoluteLayer : ILayer
             return this;
         }
 
+        /// <inheritdoc/>
         public ILayer Build(IOutput input)
         {
             if (filterWidth < 1 || filterHeight < 1 || filterStride < 1 || filterCount < 1)
@@ -284,6 +316,14 @@ public sealed class ConvoluteLayer : ILayer
             return new ConvoluteLayer(filterWidth, filterHeight, filterStride, filterCount, activation, initializer ?? new HeInitializer(), input);
         }
 
+        /// <summary>
+        /// Configures filter dimensions, stride, and count for the layer.
+        /// </summary>
+        /// <param name="width">Width of convolutional filters.</param>
+        /// <param name="height">Height of convolutional filters.</param>
+        /// <param name="stride">Strides between filter applications.</param>
+        /// <param name="count">Number of filters in the layer.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Filters(int width, int height, int stride, int count)
         {
             filterWidth = width;
@@ -294,6 +334,11 @@ public sealed class ConvoluteLayer : ILayer
             return this;
         }
 
+        /// <summary>
+        /// Sets the weight initializer for the layer.
+        /// </summary>
+        /// <param name="initializer">The weight initializer to use.</param>
+        /// <returns>The current builder instance.</returns>
         public Builder Initializer(IInitializer initializer)
         {
             this.initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
